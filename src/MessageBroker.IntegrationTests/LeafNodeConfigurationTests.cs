@@ -28,7 +28,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 });
 
                 var info = await server.GetInfoAsync();
-                var leafNode = info.CurrentConfiguration.LeafNode;
+                var leafNode = info.CurrentConfig.LeafNode;
 
                 if (leafNode.ImportSubjects.Count != 2 ||
                     !leafNode.ImportSubjects.Contains("events.>") ||
@@ -72,7 +72,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 }
 
                 var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfiguration.LeafNode.ImportSubjects;
+                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
                 if (importSubjects.Count != 3 ||
                     !importSubjects.Contains("events.>") ||
@@ -110,7 +110,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 }
 
                 var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfiguration.LeafNode.ImportSubjects;
+                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
                 if (importSubjects.Count != 2 ||
                     !importSubjects.Contains("events.>") ||
@@ -147,7 +147,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 }
 
                 var info = await server.GetInfoAsync();
-                var exportSubjects = info.CurrentConfiguration.LeafNode.ExportSubjects;
+                var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
 
                 if (exportSubjects.Count != 3)
                 {
@@ -181,7 +181,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 }
 
                 var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfiguration.LeafNode.ImportSubjects;
+                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
                 if (importSubjects.Count != 2 ||
                     !importSubjects.Contains("new.>") ||
@@ -218,7 +218,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 }
 
                 var info = await server.GetInfoAsync();
-                var exportSubjects = info.CurrentConfiguration.LeafNode.ExportSubjects;
+                var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
 
                 if (exportSubjects.Count != 2 ||
                     !exportSubjects.Contains("new.>") ||
@@ -256,7 +256,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
                 await server.RemoveLeafNodeImportSubjectsAsync("v1.>");
 
                 var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfiguration.LeafNode.ImportSubjects;
+                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
                 if (importSubjects.Count != 2 ||
                     !importSubjects.Contains("v2.>") ||
@@ -293,7 +293,7 @@ public class LeafNodeConfigurationTests : IIntegrationTest
 
                 var info = await server.GetInfoAsync();
 
-                if (info.CurrentConfiguration.LeafNode.ImportSubjects.Count != 4)
+                if (info.CurrentConfig.LeafNode.ImportSubjects.Count != 4)
                 {
                     throw new Exception("Wildcard patterns not configured correctly");
                 }

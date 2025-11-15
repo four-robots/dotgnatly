@@ -88,9 +88,9 @@ public class ConcurrentOperationTests : IIntegrationTest
                 var info = await server.GetInfoAsync();
                 await server.ShutdownAsync();
 
-                if (info.CurrentConfiguration.LeafNode.ImportSubjects.Count != 5)
+                if (info.CurrentConfig.LeafNode.ImportSubjects.Count != 5)
                 {
-                    throw new Exception($"Expected 5 subjects, got {info.CurrentConfiguration.LeafNode.ImportSubjects.Count}");
+                    throw new Exception($"Expected 5 subjects, got {info.CurrentConfig.LeafNode.ImportSubjects.Count}");
                 }
             });
 
