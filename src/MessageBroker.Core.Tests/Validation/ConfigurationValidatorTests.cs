@@ -21,7 +21,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Message.Contains("cannot be null"));
+        Assert.Contains(result.Errors, e => e.ErrorMessage.Contains("cannot be null"));
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "HttpPort" && e.Message.Contains("same as"));
+        Assert.Contains(result.Errors, e => e.PropertyName == "HttpPort" && e.ErrorMessage.Contains("same as"));
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "HttpsPort" && e.Message.Contains("HttpPort"));
+        Assert.Contains(result.Errors, e => e.PropertyName == "HttpsPort" && e.ErrorMessage.Contains("HttpPort"));
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "Auth" && e.Message.Contains("simultaneously"));
+        Assert.Contains(result.Errors, e => e.PropertyName == "Auth" && e.ErrorMessage.Contains("simultaneously"));
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName.Contains("LeafNode") && e.Message.Contains("same as"));
+        Assert.Contains(result.Errors, e => e.PropertyName.Contains("LeafNode") && e.ErrorMessage.Contains("same as"));
     }
 
     [Fact]
@@ -453,7 +453,7 @@ public class ConfigurationValidatorTests
 
         // Assert
         Assert.Contains(result.Errors, e =>
-            e.PropertyName == "Jetstream" && e.Severity == ValidationSeverity.Warning && e.Message.Contains("loss"));
+            e.PropertyName == "Jetstream" && e.Severity == ValidationSeverity.Warning && e.ErrorMessage.Contains("loss"));
     }
 
     [Fact]
