@@ -39,6 +39,16 @@ public class NatsController : IBrokerController, IDisposable
     }
 
     /// <summary>
+    /// Internal constructor for testing with mock bindings.
+    /// </summary>
+    internal NatsController(INatsBindings bindings)
+    {
+        _validator = new ConfigurationValidator();
+        _store = new InMemoryConfigurationStore();
+        _bindings = bindings;
+    }
+
+    /// <summary>
     /// Gets the current active configuration of the broker.
     /// </summary>
     public BrokerConfiguration CurrentConfiguration
