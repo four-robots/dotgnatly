@@ -40,6 +40,11 @@ internal interface INatsBindings
     IntPtr RegisterAccount(string accountName);
     IntPtr LookupAccount(string accountName);
     IntPtr GetAccountStatz(string? accountFilter);
+
+    // Server state methods
+    IntPtr GetServerID();
+    IntPtr GetServerName();
+    IntPtr IsServerRunning();
 }
 
 internal sealed class WindowsNatsBindings : INatsBindings
@@ -185,6 +190,22 @@ internal sealed class WindowsNatsBindings : INatsBindings
     internal static extern IntPtr _getAccountStatz(string? accountFilter);
 
     public IntPtr GetAccountStatz(string? accountFilter) => _getAccountStatz(accountFilter);
+
+    // Server state method declarations
+    [DllImport("nats-bindings.dll", EntryPoint = "GetServerID")]
+    internal static extern IntPtr _getServerID();
+
+    public IntPtr GetServerID() => _getServerID();
+
+    [DllImport("nats-bindings.dll", EntryPoint = "GetServerName")]
+    internal static extern IntPtr _getServerName();
+
+    public IntPtr GetServerName() => _getServerName();
+
+    [DllImport("nats-bindings.dll", EntryPoint = "IsServerRunning")]
+    internal static extern IntPtr _isServerRunning();
+
+    public IntPtr IsServerRunning() => _isServerRunning();
 }
 
 
@@ -331,4 +352,20 @@ internal sealed class LinuxNatsBindings : INatsBindings
     internal static extern IntPtr _getAccountStatz(string? accountFilter);
 
     public IntPtr GetAccountStatz(string? accountFilter) => _getAccountStatz(accountFilter);
+
+    // Server state method declarations
+    [DllImport("nats-bindings.so", EntryPoint = "GetServerID")]
+    internal static extern IntPtr _getServerID();
+
+    public IntPtr GetServerID() => _getServerID();
+
+    [DllImport("nats-bindings.so", EntryPoint = "GetServerName")]
+    internal static extern IntPtr _getServerName();
+
+    public IntPtr GetServerName() => _getServerName();
+
+    [DllImport("nats-bindings.so", EntryPoint = "IsServerRunning")]
+    internal static extern IntPtr _isServerRunning();
+
+    public IntPtr IsServerRunning() => _isServerRunning();
 }

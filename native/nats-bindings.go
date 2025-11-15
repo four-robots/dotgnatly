@@ -1015,6 +1015,64 @@ func GetAccountStatz(accountFilter *C.char) *C.char {
 	return C.CString(string(jsonBytes))
 }
 
+// GetServerID returns the unique server ID.
+//
+//export GetServerID
+func GetServerID() *C.char {
+	serverMu.Lock()
+	defer serverMu.Unlock()
+
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
+		return C.CString("ERROR: Server not running")
+	}
+
+	serverID := srv.ID()
+	return C.CString(serverID)
+}
+
+// GetServerName returns the server name from configuration.
+//
+//export GetServerName
+func GetServerName() *C.char {
+	serverMu.Lock()
+	defer serverMu.Unlock()
+
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
+		return C.CString("ERROR: Server not running")
+	}
+
+	serverName := srv.Name()
+	if serverName == "" {
+		// If no name is configured, return a default
+		return C.CString("")
+	}
+
+	return C.CString(serverName)
+}
+
+// IsServerRunning checks if the server is currently running.
+// Returns "true" or "false" as a string.
+//
+//export IsServerRunning
+func IsServerRunning() *C.char {
+	serverMu.Lock()
+	defer serverMu.Unlock()
+
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
+		return C.CString("false")
+	}
+
+	// Check if server is actually running
+	running := srv.Running()
+	if running {
+		return C.CString("true")
+	}
+	return C.CString("false")
+}
+
 func main() {
 	// Required for c-shared library
 }

@@ -245,23 +245,32 @@ This document tracks the implementation status of NATS server features that are 
 - **Use Case**: Load balancer health checks
 - **Priority**: MEDIUM
 
-#### ⏳ ID() - Server Unique Identifier
+#### ✅ ID() - Server Unique Identifier
+- **Status**: **Implemented** in `GetServerIdAsync()`
+- **Location**: `native/nats-bindings.go:1021`, `NatsController.cs:1058`
 - **Purpose**: Get server unique ID
-- **Returns**: Server ID string
-- **Use Case**: Cluster identification
+- **Returns**: Server ID string (UUID format)
+- **Use Case**: Cluster identification, logging, diagnostics
 - **Priority**: LOW
+- **Completed**: 2025-11-15
 
-#### ⏳ Name() - Server Name
+#### ✅ Name() - Server Name
+- **Status**: **Implemented** in `GetServerNameAsync()`
+- **Location**: `native/nats-bindings.go:1037`, `NatsController.cs:1099`
 - **Purpose**: Get server name from config
-- **Returns**: Server name
+- **Returns**: Server name (empty string if not configured)
 - **Use Case**: Display/logging
 - **Priority**: LOW
+- **Completed**: 2025-11-15
 
-#### ⏳ Running() - Server Status
+#### ✅ Running() - Server Status
+- **Status**: **Implemented** in `IsServerRunningAsync()`
+- **Location**: `native/nats-bindings.go:1059`, `NatsController.cs:1143`
 - **Purpose**: Check if server is running
-- **Returns**: Boolean
-- **Use Case**: Status monitoring
+- **Returns**: Boolean (true/false)
+- **Use Case**: Status monitoring, health checks
 - **Priority**: MEDIUM
+- **Completed**: 2025-11-15
 
 ### 6. Logging Control
 
@@ -326,12 +335,13 @@ This document tracks the implementation status of NATS server features that are 
 **Status**: All monitoring endpoints complete
 **Completed**: 2025-11-15
 
-### Phase 4: Runtime Control (Sprint 4)
+### Phase 4: Runtime Control (Sprint 4) 🚧 **IN PROGRESS**
 1. ⏳ Implement EnableJetStream() / DisableJetStream()
 2. ⏳ Implement JetStreamEnabled()
 3. ⏳ Implement ReadyForConnections() exposure
-4. ⏳ Implement Running() status check
-5. ⏳ Add tests for runtime control
+4. ✅ Implement ID(), Name(), Running() status methods
+5. ✅ Add tests for server state methods (7 Go + 12 C# + 4 integration = 23 tests)
+**Status**: Server state methods complete (ID, Name, Running)
 
 ### Phase 5: Advanced Features (Sprint 5)
 1. ⏳ Implement Raftz() - Raft state
@@ -405,10 +415,15 @@ This document tracks the implementation status of NATS server features that are 
 - ✅ **RegisterAccount** - Runtime account creation
 - ✅ **LookupAccount** - Account queries
 
+**Server State Methods (3):**
+- ✅ **ID** - Get server unique identifier
+- ✅ **Name** - Get server name
+- ✅ **Running** - Check server running status
+
 ### Total Features
-- **Implemented**: 21/35 (60%)
+- **Implemented**: 24/35 (69%)
 - **In Progress**: 0/35 (0%)
-- **Planned**: 14/35 (40%)
+- **Planned**: 11/35 (31%)
 
 ---
 
