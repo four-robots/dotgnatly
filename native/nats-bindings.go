@@ -282,7 +282,7 @@ func GetServerInfo() *C.char {
 		MaxPay:   varz.MaxPayload,
 		AuthReq:  varz.AuthRequired,
 		TLS:      varz.TLSRequired,
-		JetStrem: varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0,
+		JetStrem: varz.JetStream.Config != nil && (varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0),
 	}
 
 	jsonBytes, err := json.Marshal(info)
