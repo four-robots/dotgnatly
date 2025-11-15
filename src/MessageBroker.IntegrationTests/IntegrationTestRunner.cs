@@ -24,9 +24,10 @@ public class IntegrationTestRunner
         Console.WriteLine($"Running {_tests.Count} test suites...");
         Console.WriteLine();
 
-        foreach (var test in _tests)
+        for (int i = 0; i < _tests.Count; i++)
         {
-            Console.WriteLine($"Running {test.GetType().Name}...");
+            var test = _tests[i];
+            Console.WriteLine($"[{i + 1}/{_tests.Count}] Running {test.GetType().Name}...");
             Console.WriteLine(new string('-', 60));
 
             try
@@ -37,6 +38,7 @@ public class IntegrationTestRunner
             catch (Exception ex)
             {
                 Console.WriteLine($"✗ {test.GetType().Name} failed with exception: {ex.Message}");
+                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
                 _results.AddFailure($"{test.GetType().Name}: {ex.Message}");
             }
 
@@ -70,6 +72,11 @@ public class TestResults
     public double SuccessRate => _totalTests == 0 ? 0 : (_passedTests / (double)_totalTests) * 100;
     public IReadOnlyList<string> Failures => _failures;
 
+    public void StartTest(string testName)
+    {
+        Console.WriteLine($"  → Starting: {testName}");
+    }
+
     public void RecordTest(string testName, bool passed, string? errorMessage = null)
     {
         _totalTests++;
@@ -101,6 +108,7 @@ public class TestResults
 
     public async Task AssertAsync(string testName, Func<Task<bool>> testFunc)
     {
+        StartTest(testName);
         try
         {
             var result = await testFunc();
@@ -114,6 +122,7 @@ public class TestResults
 
     public async Task AssertNoExceptionAsync(string testName, Func<Task> testFunc)
     {
+        StartTest(testName);
         try
         {
             await testFunc();
@@ -127,6 +136,7 @@ public class TestResults
 
     public async Task AssertExceptionAsync<TException>(string testName, Func<Task> testFunc) where TException : Exception
     {
+        StartTest(testName);
         try
         {
             await testFunc();
