@@ -311,6 +311,10 @@ public class NatsController : IBrokerController, IDisposable
         await _operationSemaphore.WaitAsync(cancellationToken);
         try
         {
+            // Set the current port to ensure we query the correct server instance
+            // This is critical for multi-server scenarios
+            _bindings.SetCurrentPort(_currentConfiguration!.Port);
+
             // Get client URL
             IntPtr urlPtr = IntPtr.Zero;
             string clientUrl;
