@@ -196,9 +196,17 @@ public class ConfigurationReloadTests : IIntegrationTest
                 var info = await server.GetInfoAsync();
                 await server.ShutdownAsync();
 
-                return result.Success &&
-                       info.CurrentConfig.LeafNode.Port == 7422 &&
-                       info.CurrentConfig.LeafNode.ImportSubjects.Contains("test.>");
+                // Check each condition and provide detailed error message
+                if (!result.Success)
+                    throw new Exception("Hot reload failed: " + (result.ErrorMessage ?? "Unknown error"));
+
+                if (info.CurrentConfig.LeafNode.Port != 7422)
+                    throw new Exception($"Expected LeafNode.Port to be 7422, but got {info.CurrentConfig.LeafNode.Port}");
+
+                if (!info.CurrentConfig.LeafNode.ImportSubjects.Contains("test.>"))
+                    throw new Exception($"Expected ImportSubjects to contain 'test.>', but got: {string.Join(", ", info.CurrentConfig.LeafNode.ImportSubjects)}");
+
+                return true;
             });
 
         // Test 10: Hot reload preserves unmodified properties
