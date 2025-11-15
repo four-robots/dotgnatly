@@ -915,4 +915,209 @@ public class NatsControllerMonitoringTests : IDisposable
     }
 
     #endregion
+
+    #region Server State Methods Tests
+
+    [Fact]
+    public async Task GetServerIdAsync_Success_ReturnsServerId()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var serverId = "NATS-SERVER-ABC123";
+        var testPtr = CreateManagedString(serverId);
+
+        _mockBindings.Setup(b => b.GetServerID()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.GetServerIdAsync();
+
+        // Assert
+        Assert.Equal(serverId, result);
+        _mockBindings.Verify(b => b.GetServerID(), Times.Once);
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServerIdAsync_ErrorResponse_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("ERROR: Server not running");
+
+        _mockBindings.Setup(b => b.GetServerID()).Returns(testPtr);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.GetServerIdAsync());
+
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServerIdAsync_ServerNotRunning_ThrowsInvalidOperationException()
+    {
+        // Arrange - No configuration, so server is not running
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.GetServerIdAsync());
+
+        // Should not call binding if server not running
+        _mockBindings.Verify(b => b.GetServerID(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetServerNameAsync_Success_ReturnsServerName()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var serverName = "my-nats-server";
+        var testPtr = CreateManagedString(serverName);
+
+        _mockBindings.Setup(b => b.GetServerName()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.GetServerNameAsync();
+
+        // Assert
+        Assert.Equal(serverName, result);
+        _mockBindings.Verify(b => b.GetServerName(), Times.Once);
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServerNameAsync_EmptyName_ReturnsEmptyString()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("");
+
+        _mockBindings.Setup(b => b.GetServerName()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.GetServerNameAsync();
+
+        // Assert
+        Assert.Equal("", result);
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServerNameAsync_ErrorResponse_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("ERROR: Server not running");
+
+        _mockBindings.Setup(b => b.GetServerName()).Returns(testPtr);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.GetServerNameAsync());
+
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServerNameAsync_ServerNotRunning_ThrowsInvalidOperationException()
+    {
+        // Arrange - No configuration
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.GetServerNameAsync());
+
+        _mockBindings.Verify(b => b.GetServerName(), Times.Never);
+    }
+
+    [Fact]
+    public async Task IsServerRunningAsync_ReturnsTrue_WhenServerIsRunning()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("true");
+
+        _mockBindings.Setup(b => b.IsServerRunning()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.IsServerRunningAsync();
+
+        // Assert
+        Assert.True(result);
+        _mockBindings.Verify(b => b.IsServerRunning(), Times.Once);
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsServerRunningAsync_ReturnsFalse_WhenServerIsNotRunning()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("false");
+
+        _mockBindings.Setup(b => b.IsServerRunning()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.IsServerRunningAsync();
+
+        // Assert
+        Assert.False(result);
+        _mockBindings.Verify(b => b.FreeString(testPtr), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsServerRunningAsync_NoConfiguration_ReturnsFalse()
+    {
+        // Arrange - No configuration
+
+        // Act
+        var result = await _controller.IsServerRunningAsync();
+
+        // Assert
+        Assert.False(result);
+        // Should not call binding if no configuration
+        _mockBindings.Verify(b => b.IsServerRunning(), Times.Never);
+    }
+
+    [Fact]
+    public async Task IsServerRunningAsync_CaseInsensitive_HandlesTrueVariations()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var testPtr = CreateManagedString("TRUE"); // Uppercase
+
+        _mockBindings.Setup(b => b.IsServerRunning()).Returns(testPtr);
+
+        // Act
+        var result = await _controller.IsServerRunningAsync();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task ServerStateMethods_AlwaysCallFreeString()
+    {
+        // Arrange
+        SetupSuccessfulConfiguration();
+        var idPtr = CreateManagedString("server-id-123");
+        var namePtr = CreateManagedString("my-server");
+        var runningPtr = CreateManagedString("true");
+
+        _mockBindings.Setup(b => b.GetServerID()).Returns(idPtr);
+        _mockBindings.Setup(b => b.GetServerName()).Returns(namePtr);
+        _mockBindings.Setup(b => b.IsServerRunning()).Returns(runningPtr);
+
+        // Act
+        await _controller.GetServerIdAsync();
+        await _controller.GetServerNameAsync();
+        await _controller.IsServerRunningAsync();
+
+        // Assert - FreeString should be called for each method
+        _mockBindings.Verify(b => b.FreeString(idPtr), Times.Once);
+        _mockBindings.Verify(b => b.FreeString(namePtr), Times.Once);
+        _mockBindings.Verify(b => b.FreeString(runningPtr), Times.Once);
+    }
+
+    #endregion
 }

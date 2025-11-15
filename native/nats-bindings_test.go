@@ -902,3 +902,141 @@ func TestGetAccountStatz_ServerNotRunning(t *testing.T) {
 		t.Errorf("Expected 'Server not running' error, got: %s", response)
 	}
 }
+
+// TestGetServerID_Success tests getting the server ID when server is running.
+func TestGetServerID_Success(t *testing.T) {
+	port := 14241
+	srv := startTestServer(t, port)
+	defer stopTestServer(t, srv, port)
+
+	result := GetServerID()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if isErrorResponse(response) {
+		t.Fatalf("Expected success, got error: %s", response)
+	}
+
+	// Server ID should be a non-empty string (UUID format)
+	if response == "" {
+		t.Error("Expected non-empty server ID")
+	}
+
+	t.Logf("Server ID: %s", response)
+}
+
+// TestGetServerID_ServerNotRunning tests getting server ID when server is not running.
+func TestGetServerID_ServerNotRunning(t *testing.T) {
+	// Don't start a server
+	currentPort = 14242
+
+	result := GetServerID()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if !isErrorResponse(response) {
+		t.Errorf("Expected error response, got: %s", response)
+	}
+
+	if !strings.Contains(response, "Server not running") {
+		t.Errorf("Expected 'Server not running' error, got: %s", response)
+	}
+}
+
+// TestGetServerName_Success tests getting the server name when server is running.
+func TestGetServerName_Success(t *testing.T) {
+	port := 14243
+	srv := startTestServer(t, port)
+	defer stopTestServer(t, srv, port)
+
+	result := GetServerName()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if isErrorResponse(response) {
+		t.Fatalf("Expected success, got error: %s", response)
+	}
+
+	// Server name might be empty if not configured, which is valid
+	t.Logf("Server name: '%s' (empty is valid if not configured)", response)
+}
+
+// TestGetServerName_ServerNotRunning tests getting server name when server is not running.
+func TestGetServerName_ServerNotRunning(t *testing.T) {
+	// Don't start a server
+	currentPort = 14244
+
+	result := GetServerName()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if !isErrorResponse(response) {
+		t.Errorf("Expected error response, got: %s", response)
+	}
+
+	if !strings.Contains(response, "Server not running") {
+		t.Errorf("Expected 'Server not running' error, got: %s", response)
+	}
+}
+
+// TestIsServerRunning_True tests when server is actually running.
+func TestIsServerRunning_True(t *testing.T) {
+	port := 14245
+	srv := startTestServer(t, port)
+	defer stopTestServer(t, srv, port)
+
+	result := IsServerRunning()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if response != "true" {
+		t.Errorf("Expected 'true', got: %s", response)
+	}
+
+	t.Log("Server is running: true")
+}
+
+// TestIsServerRunning_False tests when server is not running.
+func TestIsServerRunning_False(t *testing.T) {
+	// Don't start a server
+	currentPort = 14246
+
+	result := IsServerRunning()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if response != "false" {
+		t.Errorf("Expected 'false', got: %s", response)
+	}
+
+	t.Log("Server is running: false")
+}
+
+// TestIsServerRunning_AfterShutdown tests that IsServerRunning returns false after shutdown.
+func TestIsServerRunning_AfterShutdown(t *testing.T) {
+	port := 14247
+	srv := startTestServer(t, port)
+
+	// Verify it's running first
+	result := IsServerRunning()
+	response := C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if response != "true" {
+		t.Errorf("Expected 'true' before shutdown, got: %s", response)
+	}
+
+	// Shutdown the server
+	stopTestServer(t, srv, port)
+
+	// Now it should return false
+	result = IsServerRunning()
+	response = C.GoString(result)
+	C.free(unsafe.Pointer(result))
+
+	if response != "false" {
+		t.Errorf("Expected 'false' after shutdown, got: %s", response)
+	}
+
+	t.Log("Server correctly reports not running after shutdown")
+}

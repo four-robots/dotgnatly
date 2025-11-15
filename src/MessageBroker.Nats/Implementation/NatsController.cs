@@ -1050,6 +1050,133 @@ public class NatsController : IBrokerController, IDisposable
     }
 
     /// <summary>
+    /// Gets the unique server ID.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The server's unique identifier (UUID).</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the broker is not running.</exception>
+    public async Task<string> GetServerIdAsync(CancellationToken cancellationToken = default)
+    {
+        await _operationSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            EnsureRunning();
+            _bindings.SetCurrentPort(_currentConfiguration!.Port);
+
+            IntPtr resultPtr = IntPtr.Zero;
+            try
+            {
+                resultPtr = _bindings.GetServerID();
+                var response = MarshalResponseString(resultPtr);
+
+                if (IsErrorResponse(response))
+                {
+                    throw new InvalidOperationException($"Failed to get server ID: {response}");
+                }
+
+                return response;
+            }
+            finally
+            {
+                if (resultPtr != IntPtr.Zero)
+                {
+                    _bindings.FreeString(resultPtr);
+                }
+            }
+        }
+        finally
+        {
+            _operationSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Gets the server name from configuration.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The configured server name, or empty string if not configured.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the broker is not running.</exception>
+    public async Task<string> GetServerNameAsync(CancellationToken cancellationToken = default)
+    {
+        await _operationSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            EnsureRunning();
+            _bindings.SetCurrentPort(_currentConfiguration!.Port);
+
+            IntPtr resultPtr = IntPtr.Zero;
+            try
+            {
+                resultPtr = _bindings.GetServerName();
+                var response = MarshalResponseString(resultPtr);
+
+                if (IsErrorResponse(response))
+                {
+                    throw new InvalidOperationException($"Failed to get server name: {response}");
+                }
+
+                return response;
+            }
+            finally
+            {
+                if (resultPtr != IntPtr.Zero)
+                {
+                    _bindings.FreeString(resultPtr);
+                }
+            }
+        }
+        finally
+        {
+            _operationSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Checks if the server is currently running.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>True if the server is running, false otherwise.</returns>
+    /// <remarks>
+    /// This method does not throw an exception if the server is not running;
+    /// it simply returns false. This makes it useful for health checks.
+    /// </remarks>
+    public async Task<bool> IsServerRunningAsync(CancellationToken cancellationToken = default)
+    {
+        await _operationSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            // Don't call EnsureRunning() here since we want to return false, not throw
+            if (_currentConfiguration == null)
+            {
+                return false;
+            }
+
+            _bindings.SetCurrentPort(_currentConfiguration.Port);
+
+            IntPtr resultPtr = IntPtr.Zero;
+            try
+            {
+                resultPtr = _bindings.IsServerRunning();
+                var response = MarshalResponseString(resultPtr);
+
+                // Response should be "true" or "false"
+                return response.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                if (resultPtr != IntPtr.Zero)
+                {
+                    _bindings.FreeString(resultPtr);
+                }
+            }
+        }
+        finally
+        {
+            _operationSemaphore.Release();
+        }
+    }
+
+    /// <summary>
     /// Ensures the broker is running, throwing an exception if not.
     /// </summary>
     private void EnsureRunning()
