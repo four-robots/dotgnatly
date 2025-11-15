@@ -9,6 +9,7 @@ internal interface INatsBindings
     IntPtr StartServerWithJetStream(string host, int port, string storeDir);
     IntPtr StartServerFromConfigFile(string configFilePath);
     void ShutdownServer();
+    void SetCurrentPort(int port);
     IntPtr GetClientURL();
     IntPtr GetServerInfo();
     IntPtr FreeString(IntPtr ptr);
@@ -41,6 +42,11 @@ internal sealed class WindowsNatsBindings : INatsBindings
     internal static extern void _shutdownServer();
 
     public void ShutdownServer() => _shutdownServer();
+
+    [DllImport("nats-bindings.dll", EntryPoint = "SetCurrentPort")]
+    internal static extern void _setCurrentPort(int port);
+
+    public void SetCurrentPort(int port) => _setCurrentPort(port);
 
     [DllImport("nats-bindings.dll", EntryPoint = "GetClientURL")]
     internal static extern IntPtr _getClientURL();
@@ -108,6 +114,11 @@ internal sealed class LinuxNatsBindings : INatsBindings
     internal static extern void _shutdownServer();
 
     public void ShutdownServer() => _shutdownServer();
+
+    [DllImport("nats-bindings.so", EntryPoint = "SetCurrentPort")]
+    internal static extern void _setCurrentPort(int port);
+
+    public void SetCurrentPort(int port) => _setCurrentPort(port);
 
     [DllImport("nats-bindings.so", EntryPoint = "GetClientURL")]
     internal static extern IntPtr _getClientURL();

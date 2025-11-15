@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/nats-io/jwt/v2"
@@ -17,9 +18,10 @@ import (
 )
 
 var (
-	// Global server instance
-	natsServer *server.Server
-	serverMu   sync.Mutex
+	// Map of server instances by port (supports multiple servers per process)
+	natsServers   = make(map[int]*server.Server)
+	currentPort   int // Most recently started server port (for GetServerInfo/GetClientURL)
+	serverMu      sync.Mutex
 )
 
 // ServerConfig represents the configuration for the NATS server
@@ -138,34 +140,54 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 }
 
 // createAndStartServer creates and starts a new NATS server with the given options
+// Supports multiple servers per process by tracking them by port
 func createAndStartServer(opts *server.Options) error {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	// Shutdown existing server if running
-	if natsServer != nil {
-		natsServer.Shutdown()
-		natsServer.WaitForShutdown()
-		natsServer = nil
+	port := opts.Port
+
+	// Shutdown existing server on this port if running
+	if existingServer, exists := natsServers[port]; exists {
+		existingServer.Shutdown()
+
+		// Wait for shutdown with timeout
+		shutdownComplete := make(chan struct{})
+		go func() {
+			existingServer.WaitForShutdown()
+			close(shutdownComplete)
+		}()
+
+		select {
+		case <-shutdownComplete:
+			// Shutdown completed
+		case <-time.After(5 * time.Second):
+			// Timeout - continue anyway
+		}
+
+		delete(natsServers, port)
 	}
 
 	// Create new server
-	var err error
-	natsServer, err = server.NewServer(opts)
+	newServer, err := server.NewServer(opts)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
 
 	// Configure logger
-	natsServer.ConfigureLogger()
+	newServer.ConfigureLogger()
 
 	// Start server in goroutine
-	go natsServer.Start()
+	go newServer.Start()
 
 	// Wait for server to be ready
-	if !natsServer.ReadyForConnections(server.DEFAULT_PING_INTERVAL * 2) {
+	if !newServer.ReadyForConnections(server.DEFAULT_PING_INTERVAL * 2) {
 		return fmt.Errorf("server failed to start within timeout")
 	}
+
+	// Store server by port and mark as current
+	natsServers[port] = newServer
+	currentPort = port
 
 	return nil
 }
@@ -224,11 +246,37 @@ func ShutdownServer() {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer != nil {
-		natsServer.Shutdown()
-		natsServer.WaitForShutdown()
-		natsServer = nil
+	// Shutdown the current server (most recently started)
+	if currentPort > 0 {
+		if srv, exists := natsServers[currentPort]; exists {
+			srv.Shutdown()
+
+			// Wait for shutdown with timeout to prevent hanging
+			shutdownComplete := make(chan struct{})
+			go func() {
+				srv.WaitForShutdown()
+				close(shutdownComplete)
+			}()
+
+			// Wait max 10 seconds for graceful shutdown
+			select {
+			case <-shutdownComplete:
+				// Shutdown completed gracefully
+			case <-time.After(10 * time.Second):
+				// Timeout - force cleanup anyway
+			}
+
+			delete(natsServers, currentPort)
+			currentPort = 0
+		}
 	}
+}
+
+//export SetCurrentPort
+func SetCurrentPort(port C.int) {
+	serverMu.Lock()
+	defer serverMu.Unlock()
+	currentPort = int(port)
 }
 
 //export GetClientURL
@@ -236,11 +284,13 @@ func GetClientURL() *C.char {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer == nil {
+	// Get the current server
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
 		return C.CString("ERROR: Server not running")
 	}
 
-	url := natsServer.ClientURL()
+	url := srv.ClientURL()
 	return C.CString(url)
 }
 
@@ -249,12 +299,14 @@ func GetServerInfo() *C.char {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer == nil {
+	// Get the current server
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
 		return C.CString("ERROR: Server not running")
 	}
 
 	// Get server information using Varz
-	varz, err := natsServer.Varz(nil)
+	varz, err := srv.Varz(nil)
 	if err != nil {
 		return C.CString("ERROR: Failed to get server info")
 	}
@@ -282,7 +334,7 @@ func GetServerInfo() *C.char {
 		MaxPay:   varz.MaxPayload,
 		AuthReq:  varz.AuthRequired,
 		TLS:      varz.TLSRequired,
-		JetStrem: varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0,
+		JetStrem: varz.JetStream.Config != nil && (varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0),
 	}
 
 	jsonBytes, err := json.Marshal(info)
@@ -306,11 +358,12 @@ func ReloadConfig() *C.char {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer == nil {
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
 		return C.CString("ERROR: Server not running")
 	}
 
-	if err := natsServer.Reload(); err != nil {
+	if err := srv.Reload(); err != nil {
 		return C.CString(fmt.Sprintf("ERROR: Failed to reload config: %v", err))
 	}
 
@@ -329,11 +382,12 @@ func ReloadConfigFromFile(configFilePath *C.char) *C.char {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer == nil {
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
 		return C.CString("ERROR: Server not running")
 	}
 
-	if err := natsServer.ReloadOptions(opts); err != nil {
+	if err := srv.ReloadOptions(opts); err != nil {
 		return C.CString(fmt.Sprintf("ERROR: Failed to reload options: %v", err))
 	}
 
@@ -354,11 +408,16 @@ func UpdateAndReloadConfig(configJson *C.char) *C.char {
 	serverMu.Lock()
 	defer serverMu.Unlock()
 
-	if natsServer == nil {
+	// Update currentPort to match the config being reloaded
+	// This allows switching between servers
+	currentPort = config.Port
+
+	srv, exists := natsServers[currentPort]
+	if !exists || srv == nil {
 		return C.CString("ERROR: Server not running")
 	}
 
-	if err := natsServer.ReloadOptions(opts); err != nil {
+	if err := srv.ReloadOptions(opts); err != nil {
 		return C.CString(fmt.Sprintf("ERROR: Failed to reload options: %v", err))
 	}
 

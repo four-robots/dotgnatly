@@ -94,106 +94,117 @@ public class NatsController : IBrokerController, IDisposable
         await _operationSemaphore.WaitAsync(cancellationToken);
         try
         {
-            // Step 1: Validate the configuration
-            var validationResult = _currentConfiguration == null
-                ? _validator.Validate(config)
-                : _validator.ValidateChanges(_currentConfiguration, config);
-
-            if (!validationResult.IsValid)
-            {
-                return ConfigurationResult.Failed(
-                    $"Configuration validation failed: {validationResult.GetSummary()}");
-            }
-
-            // Step 2: Calculate diff and raise ConfigurationChanging event (cancelable)
-            var diff = ConfigurationDiffEngine.CalculateDiff(_currentConfiguration, config);
-            var changingArgs = new ConfigurationChangingEventArgs(_currentConfiguration ?? config, config, diff);
-
-            ConfigurationChanging?.Invoke(this, changingArgs);
-
-            if (changingArgs.Cancel)
-            {
-                return ConfigurationResult.Failed(
-                    changingArgs.CancellationReason ?? "Configuration change was canceled");
-            }
-
-            // Step 3: Map to ServerConfig and serialize
-            var serverConfig = ConfigurationMapper.MapToServerConfig(config);
-            var configJson = SerializeConfig(serverConfig);
-
-            // Step 4: Call appropriate binding method (start or reload)
-            IntPtr resultPtr = IntPtr.Zero;
-            string response;
-
-            try
-            {
-                if (!IsRunning)
-                {
-                    // First time - start the server
-                    resultPtr = _bindings.StartServer(configJson);
-                    response = MarshalResponseString(resultPtr);
-
-                    if (IsErrorResponse(response))
-                    {
-                        return ConfigurationResult.Failed($"Failed to start NATS server: {response}");
-                    }
-
-                    IsRunning = true;
-                }
-                else
-                {
-                    // Subsequent times - hot reload
-                    resultPtr = _bindings.UpdateAndReloadConfig(configJson);
-                    response = MarshalResponseString(resultPtr);
-
-                    if (IsErrorResponse(response))
-                    {
-                        return ConfigurationResult.Failed($"Failed to reload NATS configuration: {response}");
-                    }
-                }
-            }
-            finally
-            {
-                if (resultPtr != IntPtr.Zero)
-                {
-                    _bindings.FreeString(resultPtr);
-                }
-            }
-
-            // Step 5: Create and save version
-            var oldVersion = _currentVersionNumber > 0
-                ? await _store.GetVersionAsync(_currentVersionNumber, cancellationToken)
-                : null;
-
-            var newVersion = new ConfigurationVersion
-            {
-                Configuration = (BrokerConfiguration)config.Clone(),
-                AppliedAt = DateTimeOffset.UtcNow,
-                ChangeType = IsRunning && _currentVersionNumber > 0
-                    ? ConfigurationChangeType.Update
-                    : ConfigurationChangeType.Initial
-            };
-
-            await _store.SaveAsync(newVersion, cancellationToken);
-
-            // Update current state
-            _currentVersionNumber = newVersion.Version;
-            CurrentConfiguration = (BrokerConfiguration)config.Clone();
-
-            // Step 6: Raise ConfigurationChanged event
-            if (oldVersion != null)
-            {
-                var changedArgs = new ConfigurationChangedEventArgs(oldVersion, newVersion, diff);
-                ConfigurationChanged?.Invoke(this, changedArgs);
-            }
-
-            // Step 7: Return success result
-            return ConfigurationResult.Succeeded(newVersion, diff);
+            return await ConfigureInternalAsync(config, cancellationToken);
         }
         finally
         {
             _operationSemaphore.Release();
         }
+    }
+
+    /// <summary>
+    /// Internal configuration method that doesn't acquire the semaphore.
+    /// Used by RollbackAsync and other methods that already hold the semaphore.
+    /// </summary>
+    private async Task<ConfigurationResult> ConfigureInternalAsync(
+        BrokerConfiguration config,
+        CancellationToken cancellationToken = default)
+    {
+        // Step 1: Validate the configuration
+        var validationResult = _currentConfiguration == null
+            ? _validator.Validate(config)
+            : _validator.ValidateChanges(_currentConfiguration, config);
+
+        if (!validationResult.IsValid)
+        {
+            return ConfigurationResult.Failed(
+                $"Configuration validation failed: {validationResult.GetSummary()}");
+        }
+
+        // Step 2: Calculate diff and raise ConfigurationChanging event (cancelable)
+        var diff = ConfigurationDiffEngine.CalculateDiff(_currentConfiguration, config);
+        var changingArgs = new ConfigurationChangingEventArgs(_currentConfiguration ?? config, config, diff);
+
+        ConfigurationChanging?.Invoke(this, changingArgs);
+
+        if (changingArgs.Cancel)
+        {
+            return ConfigurationResult.Failed(
+                changingArgs.CancellationReason ?? "Configuration change was canceled");
+        }
+
+        // Step 3: Map to ServerConfig and serialize
+        var serverConfig = ConfigurationMapper.MapToServerConfig(config);
+        var configJson = SerializeConfig(serverConfig);
+
+        // Step 4: Call appropriate binding method (start or reload)
+        IntPtr resultPtr = IntPtr.Zero;
+        string response;
+
+        try
+        {
+            if (!IsRunning)
+            {
+                // First time - start the server
+                resultPtr = _bindings.StartServer(configJson);
+                response = MarshalResponseString(resultPtr);
+
+                if (IsErrorResponse(response))
+                {
+                    return ConfigurationResult.Failed($"Failed to start NATS server: {response}");
+                }
+
+                IsRunning = true;
+            }
+            else
+            {
+                // Subsequent times - hot reload
+                resultPtr = _bindings.UpdateAndReloadConfig(configJson);
+                response = MarshalResponseString(resultPtr);
+
+                if (IsErrorResponse(response))
+                {
+                    return ConfigurationResult.Failed($"Failed to reload NATS configuration: {response}");
+                }
+            }
+        }
+        finally
+        {
+            if (resultPtr != IntPtr.Zero)
+            {
+                _bindings.FreeString(resultPtr);
+            }
+        }
+
+        // Step 5: Create and save version
+        var oldVersion = _currentVersionNumber > 0
+            ? await _store.GetVersionAsync(_currentVersionNumber, cancellationToken)
+            : null;
+
+        var newVersion = new ConfigurationVersion
+        {
+            Configuration = (BrokerConfiguration)config.Clone(),
+            AppliedAt = DateTimeOffset.UtcNow,
+            ChangeType = IsRunning && _currentVersionNumber > 0
+                ? ConfigurationChangeType.Update
+                : ConfigurationChangeType.Initial
+        };
+
+        await _store.SaveAsync(newVersion, cancellationToken);
+
+        // Update current state
+        _currentVersionNumber = newVersion.Version;
+        CurrentConfiguration = (BrokerConfiguration)config.Clone();
+
+        // Step 6: Raise ConfigurationChanged event
+        if (oldVersion != null)
+        {
+            var changedArgs = new ConfigurationChangedEventArgs(oldVersion, newVersion, diff);
+            ConfigurationChanged?.Invoke(this, changedArgs);
+        }
+
+        // Step 7: Return success result
+        return ConfigurationResult.Succeeded(newVersion, diff);
     }
 
     /// <summary>
@@ -278,8 +289,8 @@ public class NatsController : IBrokerController, IDisposable
             var rollbackConfig = (BrokerConfiguration)targetVersion.Configuration.Clone();
             rollbackConfig.Description = $"Rollback to version {targetVersion.Version}";
 
-            // Apply the rollback configuration
-            var result = await ConfigureAsync(rollbackConfig, cancellationToken);
+            // Apply the rollback configuration using internal method (we already hold the semaphore)
+            var result = await ConfigureInternalAsync(rollbackConfig, cancellationToken);
 
             // If successful, update the change type to Rollback
             if (result.Success && result.Version != null)
@@ -311,6 +322,10 @@ public class NatsController : IBrokerController, IDisposable
         await _operationSemaphore.WaitAsync(cancellationToken);
         try
         {
+            // Set the current port to ensure we query the correct server instance
+            // This is critical for multi-server scenarios
+            _bindings.SetCurrentPort(_currentConfiguration!.Port);
+
             // Get client URL
             IntPtr urlPtr = IntPtr.Zero;
             string clientUrl;
@@ -516,7 +531,27 @@ public class NatsController : IBrokerController, IDisposable
             {
                 try
                 {
-                    ShutdownAsync().GetAwaiter().GetResult();
+                    // Use a timeout to prevent deadlock during disposal
+                    // Try to acquire semaphore with 5 second timeout
+                    if (_operationSemaphore.Wait(TimeSpan.FromSeconds(5)))
+                    {
+                        try
+                        {
+                            _bindings.ShutdownServer();
+                            IsRunning = false;
+                        }
+                        finally
+                        {
+                            _operationSemaphore.Release();
+                        }
+                    }
+                    else
+                    {
+                        // If we can't acquire the semaphore, force shutdown anyway
+                        // This prevents disposal from hanging forever
+                        _bindings.ShutdownServer();
+                        IsRunning = false;
+                    }
                 }
                 catch
                 {
