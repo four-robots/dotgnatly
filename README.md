@@ -1,10 +1,10 @@
-# MessageBroker.NET
+# DotGnatly
 
 Full control over NATS servers with runtime reconfiguration via Go bindings.
 
-## What is MessageBroker.NET?
+## What is DotGnatly?
 
-MessageBroker.NET is a .NET library that provides programmatic control over NATS server instances, enabling:
+DotGnatly is a .NET library that provides programmatic control over NATS server instances, enabling:
 
 - **Full Server Control**: Start, stop, and configure NATS servers from C# code
 - **Hot Configuration Reload**: Update settings without restart or downtime
@@ -15,14 +15,14 @@ MessageBroker.NET is a .NET library that provides programmatic control over NATS
 
 ## Key Differentiator
 
-Unlike standard nats-csharp (client library only), MessageBroker.NET provides **server control** with **runtime reconfiguration**:
+Unlike standard nats-csharp (client library only), DotGnatly provides **server control** with **runtime reconfiguration**:
 
 ```csharp
 // Standard nats-csharp - Client only
 var conn = new ConnectionFactory().CreateConnection("nats://localhost:4222");
 // Requires external NATS server, cannot control or reconfigure
 
-// MessageBroker.NET - Full server control
+// DotGnatly - Full server control
 using var server = new NatsServer();
 server.Start(new ServerConfig { Port = 4222, Jetstream = true });
 
@@ -128,15 +128,15 @@ Console.WriteLine($"Version: {info.Version}");
 ### NuGet Package (Recommended)
 
 ```bash
-dotnet add package MessageBroker.NET
+dotnet add package DotGnatly
 ```
 
 ### Build from Source
 
 ```bash
 # Clone repository
-git clone https://github.com/four-robots/messagebroker.net.git
-cd messagebroker.net
+git clone https://github.com/four-robots/dotgnatly.git
+cd dotgnatly
 
 # Build native Go bindings first
 cd native
@@ -146,10 +146,10 @@ cd native
 
 # Build .NET library
 cd ..
-dotnet build MessageBroker.NET.sln
+dotnet build DotGnatly.sln
 
 # Run examples
-cd src/MessageBroker.Examples
+cd src/DotGnatly.Examples
 dotnet run
 ```
 
@@ -196,7 +196,7 @@ See **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** for detailed architecture docu
 
 ## Comparison with nats-csharp
 
-| Feature | nats-csharp | MessageBroker.NET |
+| Feature | nats-csharp | DotGnatly |
 |---------|-------------|-------------------|
 | Client Operations | Yes | Yes (via nats-csharp) |
 | Server Control | No | **Yes** |
@@ -260,7 +260,7 @@ Contributions welcome! Please:
 
 ## License
 
-MessageBroker.NET is licensed under the Apache License 2.0.
+DotGnatly is licensed under the Apache License 2.0.
 
 NATS Server (embedded) is licensed under the Apache License 2.0.
 

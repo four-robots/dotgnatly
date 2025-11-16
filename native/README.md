@@ -1,10 +1,10 @@
 # NATS Bindings - Native Go Library
 
-This directory contains the Go source code for the native NATS server bindings used by MessageBroker.NET. The bindings provide a P/Invoke interface from C# to the embedded NATS server.
+This directory contains the Go source code for the native NATS server bindings used by DotGnatly. The bindings provide a P/Invoke interface from C# to the embedded NATS server.
 
 ## Overview
 
-The NATS bindings are built as a C-shared library that exposes the NATS server functionality to .NET through Platform Invoke (P/Invoke). This allows MessageBroker.NET to control an embedded NATS server instance directly from C# code.
+The NATS bindings are built as a C-shared library that exposes the NATS server functionality to .NET through Platform Invoke (P/Invoke). This allows DotGnatly to control an embedded NATS server instance directly from C# code.
 
 ## Architecture
 
@@ -127,7 +127,7 @@ Edit `nats-bindings.go` to add new functions or change behavior.
 ### 2. Update C# Bindings
 
 If you add new exported functions, update the P/Invoke declarations in:
-- `src/MessageBroker.Nats/Bindings/NatsBindings.cs`
+- `src/DotGnatly.Nats/Bindings/NatsBindings.cs`
 
 Add the `[DllImport]` declarations for both `WindowsNatsBindings` and `LinuxNatsBindings`.
 
@@ -143,7 +143,7 @@ Add the `[DllImport]` declarations for both `WindowsNatsBindings` and `LinuxNats
 ### 4. Test
 
 ```bash
-cd ../src/MessageBroker.Examples
+cd ../src/DotGnatly.Examples
 dotnet run -- test
 ```
 
@@ -173,7 +173,7 @@ To upgrade to a newer version of NATS server:
 4. Test thoroughly:
    ```bash
    ./build.sh
-   cd ../src/MessageBroker.Examples
+   cd ../src/DotGnatly.Examples
    dotnet run -- test
    ```
 
@@ -283,7 +283,7 @@ When contributing to the native bindings:
 - [NATS Server Documentation](https://docs.nats.io/running-a-nats-service/introduction)
 - [NATS Server GitHub](https://github.com/nats-io/nats-server)
 - [cgo Documentation](https://golang.org/cmd/cgo/)
-- [MessageBroker.NET Documentation](../docs/INDEX.md)
+- [DotGnatly Documentation](../docs/INDEX.md)
 
 ## Version Information
 

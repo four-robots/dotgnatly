@@ -1,12 +1,12 @@
-# Teacher/Instructor Guide - MessageBroker.NET Work Items
+# Teacher/Instructor Guide - DotGnatly Work Items
 
-**Audience:** Educators, instructors, and mentors using MessageBroker.NET for teaching software engineering concepts
+**Audience:** Educators, instructors, and mentors using DotGnatly for teaching software engineering concepts
 **Date:** 2025-11-15
 **Purpose:** Guide for using this project's work items and implementation patterns as teaching material
 
 ## Overview
 
-This guide explains how to use the MessageBroker.NET project and its work item tracking system (TODO_NATS_FEATURES.md) as an educational resource for teaching:
+This guide explains how to use the DotGnatly project and its work item tracking system (TODO_NATS_FEATURES.md) as an educational resource for teaching:
 
 - Software architecture and layered design
 - Full-stack implementation (native bindings → high-level API)
@@ -473,7 +473,7 @@ Introduce performance considerations in multi-layer architectures.
 
 ## Conclusion
 
-MessageBroker.NET is an excellent teaching project because it:
+DotGnatly is an excellent teaching project because it:
 - ✅ Demonstrates real-world architecture patterns
 - ✅ Shows professional development practices
 - ✅ Includes comprehensive testing and documentation
@@ -500,4 +500,4 @@ For questions about using this project in education:
 
 **Document Version:** 1.0
 **Last Updated:** 2025-11-15
-**Maintained By:** MessageBroker.NET Contributors
+**Maintained By:** DotGnatly Contributors

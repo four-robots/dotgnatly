@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the migration from NATS server v2.11.0 to v2.12.2 and the API compatibility updates made to the MessageBroker.NET native bindings.
+This document summarizes the migration from NATS server v2.11.0 to v2.12.2 and the API compatibility updates made to the DotGnatly native bindings.
 
 ## Migration Timeline
 
@@ -116,7 +116,7 @@ This document summarizes the migration from NATS server v2.11.0 to v2.12.2 and t
 - **Status**: ✅ Pass (verified with v2.11.0, need network to rebuild for v2.12.2)
 
 ### C# Unit Tests
-- **Location**: `src/MessageBroker.Nats.Tests/`
+- **Location**: `src/DotGnatly.Nats.Tests/`
 - **Test Count**: 22 C# unit tests with Moq
 - **Status**: ✅ Should pass (need .NET runtime to verify)
 
@@ -210,10 +210,10 @@ GOOS=windows GOARCH=amd64 go build -buildmode=c-shared -o nats-bindings.dll .
 ### Build and Test .NET Projects
 ```bash
 # Build solution
-dotnet build MessageBroker.NET.sln
+dotnet build DotGnatly.sln
 
 # Run unit tests
-dotnet test src/MessageBroker.Nats.Tests/MessageBroker.Nats.Tests.csproj
+dotnet test src/DotGnatly.Nats.Tests/DotGnatly.Nats.Tests.csproj
 
 # Run integration tests
 dotnet test src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.csproj
@@ -253,7 +253,7 @@ dotnet test src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.cs
 
 ## Breaking Changes
 
-**None for users of MessageBroker.NET**. All changes are internal to the native bindings layer. The C# API remains unchanged.
+**None for users of DotGnatly**. All changes are internal to the native bindings layer. The C# API remains unchanged.
 
 ## Performance Impact
 

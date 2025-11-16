@@ -1,6 +1,6 @@
 # NATS Server Features - Implementation TODO
 
-This document tracks the implementation status of NATS server features that are available in the Go `server.Server` object but not yet exposed through our MessageBroker.NET library.
+This document tracks the implementation status of NATS server features that are available in the Go `server.Server` object but not yet exposed through our DotGnatly library.
 
 ## Implementation Status Legend
 - ✅ Implemented
@@ -395,14 +395,14 @@ This document tracks the implementation status of NATS server features that are 
 
 ### Test Locations
 - Go bindings tests: `native/nats-bindings_test.go` ✅ **Created** (30+ tests)
-- C# binding tests: `src/MessageBroker.Nats.Tests/Implementation/NatsControllerMonitoringTests.cs` ✅ **Created** (40+ tests)
+- C# binding tests: `src/DotGnatly.Nats.Tests/Implementation/NatsControllerMonitoringTests.cs` ✅ **Created** (40+ tests)
 - Integration tests: `src/MessageBroker.IntegrationTests/MonitoringTests.cs` ✅ **Created** (11 tests)
 
 ## Documentation Updates
 
 ✅ **Completed**:
 1. ✅ Created `docs/MONITORING.md` - Comprehensive 500+ line guide
-2. ✅ Added monitoring examples to `src/MessageBroker.Examples/Monitoring/`
+2. ✅ Added monitoring examples to `src/DotGnatly.Examples/Monitoring/`
 3. ✅ Created `IMPLEMENTATION_SUMMARY.md` - Technical documentation
 4. ✅ Created 11 integration tests in `MonitoringTests.cs`
 5. ✅ Created 30+ Go unit tests in `native/nats-bindings_test.go`

@@ -1,11 +1,11 @@
-# MessageBroker.NET Documentation
+# DotGnatly Documentation
 
-Welcome to the MessageBroker.NET documentation. This library provides full control over NATS server instances with runtime reconfiguration capabilities via Go bindings.
+Welcome to the DotGnatly documentation. This library provides full control over NATS server instances with runtime reconfiguration capabilities via Go bindings.
 
 ## Documentation Overview
 
 ### [Getting Started Guide](./GETTING_STARTED.md)
-**Start here if you're new to MessageBroker.NET**
+**Start here if you're new to DotGnatly**
 
 - Installation instructions
 - Quick start examples
@@ -32,7 +32,7 @@ Welcome to the MessageBroker.NET documentation. This library provides full contr
 - Complete API reference for all classes and methods
 - Best practices and patterns
 
-**Audience**: Developers implementing MessageBroker.NET
+**Audience**: Developers implementing DotGnatly
 
 ---
 
@@ -63,7 +63,7 @@ Welcome to the MessageBroker.NET documentation. This library provides full contr
 5. **JetStream Support**: First-class persistence and streaming
 6. **Multi-tenancy**: Built-in account and user management
 
-### Why MessageBroker.NET?
+### Why DotGnatly?
 
 **Standard nats-csharp (Client Library)**:
 ```csharp
@@ -76,7 +76,7 @@ var conn = new ConnectionFactory().CreateConnection("nats://localhost:4222");
 // CANNOT control server
 ```
 
-**MessageBroker.NET (Server Control)**:
+**DotGnatly (Server Control)**:
 ```csharp
 // Embedded server with full control
 using var server = new NatsServer();
@@ -443,7 +443,7 @@ server.Start(new ServerConfig { Host = "0.0.0.0" });
 │  │  Business Logic    │  │
 │  └────────┬───────────┘  │
 │  ┌────────┴───────────┐  │
-│  │  MessageBroker.NET │  │
+│  │  DotGnatly │  │
 │  │  (Embedded NATS)   │  │
 │  └────────────────────┘  │
 └──────────────────────────┘
@@ -542,7 +542,7 @@ See [GETTING_STARTED.md](./GETTING_STARTED.md#troubleshooting) for detailed trou
 
 Find complete working examples at:
 ```
-https://github.com/yourusername/messagebroker.net-examples
+https://github.com/yourusername/dotgnatly-examples
 ```
 
 Examples include:
@@ -566,7 +566,7 @@ Contributions are welcome! Please see:
 
 ## License
 
-MessageBroker.NET is licensed under the Apache License 2.0.
+DotGnatly is licensed under the Apache License 2.0.
 
 NATS Server (embedded) is licensed under the Apache License 2.0.
 
@@ -574,7 +574,7 @@ NATS Server (embedded) is licensed under the Apache License 2.0.
 
 ## Support and Community
 
-- **GitHub**: [github.com/yourusername/messagebroker.net](https://github.com/yourusername/messagebroker.net)
+- **GitHub**: [github.com/yourusername/dotgnatly](https://github.com/yourusername/dotgnatly)
 - **Issues**: Report bugs and request features
 - **Discussions**: Ask questions and share ideas
 - **NATS Community**: [slack.nats.io](https://slack.nats.io)
@@ -601,4 +601,4 @@ NATS Server (embedded) is licensed under the Apache License 2.0.
 3. **Read [ARCHITECTURE.md](./ARCHITECTURE.md)** - Understand the system design
 4. **Join the community** - Share your experience and get help
 
-Happy coding with MessageBroker.NET!
+Happy coding with DotGnatly!

@@ -1,8 +1,8 @@
-# MessageBroker.NET API Design
+# DotGnatly API Design
 
 ## Overview
 
-MessageBroker.NET provides a fluent, type-safe C# API for controlling NATS servers via Go bindings. The key enhancement over standard nats-csharp client libraries is **runtime reconfiguration** with validation, versioning, and change notifications while maintaining full control over the embedded NATS server.
+DotGnatly provides a fluent, type-safe C# API for controlling NATS servers via Go bindings. The key enhancement over standard nats-csharp client libraries is **runtime reconfiguration** with validation, versioning, and change notifications while maintaining full control over the embedded NATS server.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ MessageBroker.NET provides a fluent, type-safe C# API for controlling NATS serve
 
 ### Server Lifecycle Management
 
-MessageBroker.NET manages the complete lifecycle of a NATS server instance:
+DotGnatly manages the complete lifecycle of a NATS server instance:
 
 1. **Initialization** - Configure and start the server
 2. **Runtime Configuration** - Hot-reload settings without restart
@@ -517,12 +517,12 @@ using var conn = new ConnectionFactory().CreateConnection(opts);
 - No embedded server support
 - Manual server lifecycle management
 
-### MessageBroker.NET (Server Control)
+### DotGnatly (Server Control)
 
-MessageBroker.NET provides **full server control** via Go bindings:
+DotGnatly provides **full server control** via Go bindings:
 
 ```csharp
-// MessageBroker.NET - SERVER CONTROL
+// DotGnatly - SERVER CONTROL
 // Embedded NATS server with full lifecycle management
 
 using NatsSharp;
@@ -571,7 +571,7 @@ server.Shutdown();
 
 ### Side-by-Side Feature Comparison
 
-| Feature | nats-csharp | MessageBroker.NET |
+| Feature | nats-csharp | DotGnatly |
 |---------|-------------|-------------------|
 | **Client Operations** | Yes | Via nats-csharp client |
 | **Server Control** | No | Yes |
@@ -605,7 +605,7 @@ conn.SubscribeAsync("orders.*", (sender, args) =>
 });
 ```
 
-**With MessageBroker.NET:**
+**With DotGnatly:**
 ```csharp
 // Step 1: Start embedded server
 using NatsSharp;
@@ -637,7 +637,7 @@ conn.SubscribeAsync("orders.*", (sender, args) =>
 // DOWNTIME REQUIRED
 ```
 
-**With MessageBroker.NET:**
+**With DotGnatly:**
 ```csharp
 using var server = new NatsServer();
 server.Start();
@@ -662,7 +662,7 @@ server.UpdateConfig(new ServerConfig
 // Complex JWT management
 ```
 
-**With MessageBroker.NET:**
+**With DotGnatly:**
 ```csharp
 using var server = new NatsServer();
 server.Start();
@@ -1054,7 +1054,7 @@ if (result.Contains("failed") || result.Contains("error"))
 
 ## Summary
 
-MessageBroker.NET provides:
+DotGnatly provides:
 
 1. **Full Server Control**: Start, stop, and configure NATS servers programmatically
 2. **Hot Configuration**: Update settings without restart or downtime

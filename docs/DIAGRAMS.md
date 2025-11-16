@@ -1,6 +1,6 @@
-# MessageBroker.NET Architecture Diagrams
+# DotGnatly Architecture Diagrams
 
-This document provides visual diagrams to help understand the MessageBroker.NET architecture, data flows, and deployment patterns.
+This document provides visual diagrams to help understand the DotGnatly architecture, data flows, and deployment patterns.
 
 ## Table of Contents
 
@@ -428,7 +428,7 @@ Benefits:
 
 ## Comparison Diagrams
 
-### nats-csharp (Client Only) vs MessageBroker.NET (Server Control)
+### nats-csharp (Client Only) vs DotGnatly (Server Control)
 
 #### nats-csharp Architecture
 
@@ -479,7 +479,7 @@ Configuration Changes:
    ❌ DOWNTIME REQUIRED
 ```
 
-#### MessageBroker.NET Architecture
+#### DotGnatly Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -521,7 +521,7 @@ Configuration Changes:
 
 ```
 ┌─────────────────────────┬────────────────┬──────────────────┐
-│ Capability              │ nats-csharp    │ MessageBroker.NET│
+│ Capability              │ nats-csharp    │ DotGnatly│
 ├─────────────────────────┼────────────────┼──────────────────┤
 │ Start Server            │       ✗        │        ✓         │
 ├─────────────────────────┼────────────────┼──────────────────┤
@@ -565,7 +565,7 @@ Application Code
       │ 1. Start server
       │    server.Start()
       ▼
-MessageBroker.NET
+DotGnatly
       │
       │ 2. Server running
       ▼

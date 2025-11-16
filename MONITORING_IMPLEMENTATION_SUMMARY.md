@@ -86,7 +86,7 @@ All monitoring functions are implemented in Go with proper error handling, threa
   - Includes subscription details
   - Uses Connz with specific CID filter
 
-### 2. C# P/Invoke Bindings (`src/MessageBroker.Nats/Bindings/NatsBindings.cs`)
+### 2. C# P/Invoke Bindings (`src/DotGnatly.Nats/Bindings/NatsBindings.cs`)
 
 Complete P/Invoke declarations for both Windows and Linux:
 
@@ -114,7 +114,7 @@ Complete P/Invoke declarations for both Windows and Linux:
 - **Shared Library:** `nats-bindings.so`
 - All 7 monitoring functions with proper DllImport attributes
 
-### 3. High-Level C# API (`src/MessageBroker.Nats/Implementation/NatsController.cs`)
+### 3. High-Level C# API (`src/DotGnatly.Nats/Implementation/NatsController.cs`)
 
 Thread-safe async methods with proper error handling:
 
@@ -232,7 +232,7 @@ Comprehensive test suite with 8 test scenarios:
 Three comprehensive example programs demonstrating monitoring features:
 
 #### MonitoringExample
-- **Location:** `src/MessageBroker.Examples/Monitoring/MonitoringExample.cs`
+- **Location:** `src/DotGnatly.Examples/Monitoring/MonitoringExample.cs`
 - **Menu Option:** 9
 - **Features:**
   - Basic server monitoring with Connz, Subsz, Jsz
@@ -241,7 +241,7 @@ Three comprehensive example programs demonstrating monitoring features:
   - Server info demonstration
 
 #### ClusterMonitoringExample
-- **Location:** `src/MessageBroker.Examples/Monitoring/ClusterMonitoringExample.cs`
+- **Location:** `src/DotGnatly.Examples/Monitoring/ClusterMonitoringExample.cs`
 - **Menu Option:** A
 - **Features:**
   - Cluster routing monitoring (Routez)
@@ -249,7 +249,7 @@ Three comprehensive example programs demonstrating monitoring features:
   - Demonstrates cluster topology monitoring
 
 #### ClientManagementExample
-- **Location:** `src/MessageBroker.Examples/Monitoring/ClientManagementExample.cs`
+- **Location:** `src/DotGnatly.Examples/Monitoring/ClientManagementExample.cs`
 - **Menu Option:** B
 - **Features:**
   - Real-time client connection tracking
@@ -261,7 +261,7 @@ Three comprehensive example programs demonstrating monitoring features:
 
 All examples are fully integrated into the interactive menu system:
 
-**Location:** `src/MessageBroker.Examples/Program.cs`
+**Location:** `src/DotGnatly.Examples/Program.cs`
 
 - Lines 69-70: MonitoringExample (Option 9)
 - Lines 72-75: ClusterMonitoringExample (Option A)
@@ -405,7 +405,7 @@ dotnet run
 
 ```
 ========================================
-MessageBroker.NET Integration Tests
+DotGnatly Integration Tests
 ========================================
 
 Running 7 test suites...
@@ -444,7 +444,7 @@ Success Rate: 100.0%
 ### Running Examples
 
 ```bash
-cd src/MessageBroker.Examples
+cd src/DotGnatly.Examples
 dotnet run
 ```
 
