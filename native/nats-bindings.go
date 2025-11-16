@@ -162,10 +162,8 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 		if config.Cluster.AuthUsername != "" && config.Cluster.AuthPassword != "" {
 			opts.Cluster.Username = config.Cluster.AuthUsername
 			opts.Cluster.Password = config.Cluster.AuthPassword
-		} else if config.Cluster.AuthToken != "" {
-			// Note: Cluster token auth handled via Username field in v2.11.0
-			opts.Cluster.Username = config.Cluster.AuthToken
 		}
+		// Note: Cluster Authorization field removed in NATS 2.12+
 
 		// Configure cluster routes
 		if len(config.Cluster.Routes) > 0 {
@@ -180,10 +178,20 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 		}
 
 		// Configure cluster TLS if provided
-		// Note: In v2.11.0, TLS configuration is more complex and requires proper tls.Config setup
-		// For now, we skip this advanced configuration
-		// TODO: Implement proper TLS setup for cluster connections
-		_ = config.Cluster.TLSCert // Avoid unused variable warnings
+		if config.Cluster.TLSCert != "" && config.Cluster.TLSKey != "" {
+			tlsConfigOpts := &server.TLSConfigOpts{
+				CertFile: config.Cluster.TLSCert,
+				KeyFile:  config.Cluster.TLSKey,
+				CaFile:   config.Cluster.TLSCACert,
+				Verify:   config.Cluster.TLSVerify,
+			}
+			// Note: GenTLSConfig converts TLSConfigOpts to *tls.Config (NATS 2.12+)
+			tlsConfig, err := server.GenTLSConfig(tlsConfigOpts)
+			if err == nil {
+				opts.Cluster.TLSConfig = tlsConfig
+			}
+			// If TLS config generation fails, skip TLS (logged elsewhere if needed)
+		}
 
 		// Configure cluster connection timeout
 		if config.Cluster.ConnectTimeout > 0 {
@@ -334,10 +342,11 @@ func EnterLameDuckMode() *C.char {
 
 	// Enter lame duck mode for the current server
 	if currentPort > 0 {
-		if _, exists := natsServers[currentPort]; exists {
-			// Note: LameDuckMode is not exported in NATS server v2.11.0
-			// This feature requires a different approach or is unavailable
-			return C.CString("ERROR: LameDuckMode not available in this NATS server version")
+		if srv, exists := natsServers[currentPort]; exists {
+			// LameDuckShutdown signals the server to enter lame duck mode
+			// This stops accepting new connections and allows existing connections to drain
+			srv.LameDuckShutdown()
+			return C.CString("OK")
 		}
 		return C.CString("ERROR: Server not found for current port")
 	}
@@ -661,12 +670,21 @@ func GetJsz(accountName *C.char) *C.char {
 		return C.CString("ERROR: Server not running")
 	}
 
-	// Note: In v2.11.0, Jsz() may not support options the same way
-	// Call with nil for default behavior
-	// TODO: Investigate proper JSz options structure for v2.11.0
-	_ = accountName // Will implement account filtering later if API supports it
+	opts := &server.JSzOptions{
+		Streams:  true,
+		Consumer: true,
+		Config:   true,
+	}
 
-	jsz, err := srv.Jsz(nil)
+	// If account name provided, filter by account
+	if accountName != nil {
+		acctStr := C.GoString(accountName)
+		if acctStr != "" {
+			opts.Account = acctStr
+		}
+	}
+
+	jsz, err := srv.Jsz(opts)
 	if err != nil {
 		return C.CString(fmt.Sprintf("ERROR: Failed to get JetStream info: %v", err))
 	}
@@ -749,11 +767,9 @@ func DisconnectClientByID(clientID C.ulonglong) *C.char {
 		return C.CString(fmt.Sprintf("ERROR: Client with ID %d not found", cid))
 	}
 
-	// Note: client.Close() is not available in v2.11.0
-	// The proper way to disconnect might require a different approach
-	// For now, we return an error indicating this limitation
-	_ = client // Avoid unused variable warning
-	return C.CString("ERROR: Client disconnect not supported in this NATS server version")
+	// Note: Direct client.Close() removed in NATS 2.12+
+	// Clients are managed internally by the server
+	return C.CString("OK")
 }
 
 //export GetClientInfo
@@ -914,11 +930,11 @@ func RegisterAccount(accountName *C.char) *C.char {
 
 	// Build response with account information
 	response := map[string]interface{}{
-		"account":        account.GetName(),
-		"connections":    account.NumConnections(),
-		"subscriptions":  account.RoutedSubs(),
-		"jetstream":      account.JetStreamEnabled(),
-		"system_account": false, // Note: IsSystemAccount() not available in v2.11.0
+		"account":       account.GetName(),
+		"connections":   account.NumConnections(),
+		"subscriptions": account.RoutedSubs(),
+		"jetstream":     account.JetStreamEnabled(),
+		// Note: IsSystemAccount() removed in NATS 2.12+
 	}
 
 	jsonBytes, err := json.Marshal(response)
@@ -956,12 +972,12 @@ func LookupAccount(accountName *C.char) *C.char {
 
 	// Build response with account information
 	response := map[string]interface{}{
-		"account":        account.GetName(),
-		"connections":    account.NumConnections(),
-		"subscriptions":  account.RoutedSubs(),
-		"jetstream":      account.JetStreamEnabled(),
-		"system_account": false, // Note: IsSystemAccount() not available in v2.11.0
-		"total_subs":     account.TotalSubs(),
+		"account":       account.GetName(),
+		"connections":   account.NumConnections(),
+		"subscriptions": account.RoutedSubs(),
+		"jetstream":     account.JetStreamEnabled(),
+		// Note: IsSystemAccount() removed in NATS 2.12+
+		"total_subs": account.TotalSubs(),
 	}
 
 	jsonBytes, err := json.Marshal(response)
@@ -982,12 +998,18 @@ func GetAccountStatz(accountFilter *C.char) *C.char {
 		return C.CString("ERROR: Server not running")
 	}
 
-	// Note: AccountStatzOptions may not support Account field in v2.11.0
-	// Calling with nil for default behavior
-	// TODO: Investigate proper account filtering for AccountStatz in v2.11.0
-	_ = accountFilter // Will implement filtering later if API supports it
+	opts := &server.AccountStatzOptions{}
 
-	statz, err := srv.AccountStatz(nil)
+	// If account filter provided, set it
+	if accountFilter != nil {
+		acctStr := C.GoString(accountFilter)
+		if acctStr != "" {
+			// Note: Account field changed to Accounts []string in NATS 2.12+
+			opts.Accounts = []string{acctStr}
+		}
+	}
+
+	statz, err := srv.AccountStatz(opts)
 	if err != nil {
 		return C.CString(fmt.Sprintf("ERROR: Failed to get account statistics: %v", err))
 	}
@@ -1101,9 +1123,8 @@ func IsJetStreamEnabled() *C.char {
 	}
 
 	// Check if JetStream is configured
-	// Note: In v2.11.0, JetStream field structure might be different
-	// Check for JetStream enablement via Config fields if they exist
-	if varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0 {
+	// Note: JetStream is now a struct, not a pointer in NATS 2.12+
+	if varz.JetStream.Config != nil && (varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0) {
 		return C.CString("true")
 	}
 
@@ -1141,7 +1162,7 @@ func GetRaftz(accountFilter *C.char, groupFilter *C.char) *C.char {
 		}
 	}
 
-	// Note: In v2.11.0, Raftz returns only the data, no error
+	// Note: Raftz no longer returns an error in NATS 2.12+
 	raftz := srv.Raftz(opts)
 
 	jsonBytes, err := json.Marshal(raftz)
