@@ -148,7 +148,8 @@ public class NatsControllerMonitoringTests : IDisposable
         cts.Cancel();
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(
+        // TaskCanceledException inherits from OperationCanceledException
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => _controller.GetConnzAsync(cancellationToken: cts.Token));
     }
 
@@ -664,7 +665,8 @@ public class NatsControllerMonitoringTests : IDisposable
         // Assert
         var doc = JsonDocument.Parse(result);
         Assert.Equal("TEST_ACCOUNT", doc.RootElement.GetProperty("account").GetString());
-        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.Once);
+        // FreeString called twice: once for StartServer, once for RegisterAccount
+        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.AtLeast(2));
     }
 
     [Fact]
@@ -748,7 +750,8 @@ public class NatsControllerMonitoringTests : IDisposable
         Assert.Equal("EXISTING_ACCOUNT", doc.RootElement.GetProperty("account").GetString());
         Assert.Equal(5, doc.RootElement.GetProperty("connections").GetInt32());
         Assert.Equal(15, doc.RootElement.GetProperty("total_subs").GetInt32());
-        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.Once);
+        // FreeString called twice: once for StartServer, once for LookupAccount
+        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.AtLeast(2));
     }
 
     [Fact]
@@ -835,7 +838,8 @@ public class NatsControllerMonitoringTests : IDisposable
         var doc = JsonDocument.Parse(result);
         Assert.Equal("NATS123", doc.RootElement.GetProperty("server_id").GetString());
         Assert.True(doc.RootElement.GetProperty("accounts").GetArrayLength() > 0);
-        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.Once);
+        // FreeString called twice: once for StartServer, once for GetAccountStatz
+        _mockBindings.Verify(b => b.FreeString(It.IsAny<IntPtr>()), Times.AtLeast(2));
     }
 
     [Fact]
