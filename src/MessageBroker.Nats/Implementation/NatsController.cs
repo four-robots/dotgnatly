@@ -1423,11 +1423,9 @@ public class NatsController : IBrokerController, IDisposable
             return false;
         }
 
-        var lowerResponse = response.ToLowerInvariant();
-        return lowerResponse.Contains("error") ||
-               lowerResponse.Contains("failed") ||
-               lowerResponse.Contains("exception") ||
-               lowerResponse.Contains("invalid");
+        // Go bindings prefix all errors with "ERROR: "
+        // Don't use Contains() as valid JSON may include fields like "errors":0
+        return response.StartsWith("ERROR: ", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
