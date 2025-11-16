@@ -28,7 +28,7 @@ DotGnatly is a .NET library that provides full control over NATS server instance
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │              C# Application Code                          │  │
 │  │  ┌────────────────────────────────────────────────────┐  │  │
-│  │  │   using var server = new NatsServer();            │  │  │
+│  │  │   using var server = new NatsController();            │  │  │
 │  │  │   server.Start(config);                           │  │  │
 │  │  │   server.UpdateConfig(newConfig);                 │  │  │
 │  │  └────────────────────────────────────────────────────┘  │  │
@@ -36,9 +36,9 @@ DotGnatly is a .NET library that provides full control over NATS server instance
 │                              ▲                                    │
 │                              │                                    │
 │  ┌───────────────────────────┴──────────────────────────────┐  │
-│  │           NatsServer C# Wrapper Class                     │  │
+│  │           NatsController C# Wrapper Class                     │  │
 │  │                                                            │  │
-│  │  • ServerConfig objects                                   │  │
+│  │  • BrokerConfiguration objects                                   │  │
 │  │  • Type-safe configuration                                │  │
 │  │  • Lifecycle management                                   │  │
 │  │  • Error handling                                         │  │
@@ -78,7 +78,7 @@ DotGnatly is a .NET library that provides full control over NATS server instance
 │  │              Configuration Management                      │  │
 │  │                                                            │  │
 │  │  • JSON deserialization                                   │  │
-│  │  • ServerConfig → server.Options conversion               │  │
+│  │  • BrokerConfiguration → server.Options conversion               │  │
 │  │  • Configuration validation                               │  │
 │  │  • Default value application                              │  │
 │  └───────────────────────────┬───────────────────────────────┘  │
@@ -135,7 +135,7 @@ DotGnatly is a .NET library that provides full control over NATS server instance
 
 **Components:**
 
-- **NatsServer Class**: Main entry point for server control
+- **NatsController Class**: Main entry point for server control
 - **Configuration Classes**: Type-safe configuration objects
 - **Information Classes**: Server state and metrics DTOs
 
@@ -148,18 +148,18 @@ DotGnatly is a .NET library that provides full control over NATS server instance
 
 **Example:**
 ```csharp
-public class NatsServer : IDisposable
+public class NatsController : IDisposable
 {
     private INatsBindings NatsBindings { get; }
 
-    public string Start(ServerConfig config)
+    public string Start(BrokerConfiguration config)
     {
         string configJson = JsonSerializer.Serialize(config);
         IntPtr resultPtr = NatsBindings.StartServer(configJson);
         return GetStringAndFree(resultPtr);
     }
 
-    public string UpdateConfig(ServerConfig config)
+    public string UpdateConfig(BrokerConfiguration config)
     {
         string configJson = JsonSerializer.Serialize(config);
         IntPtr resultPtr = NatsBindings.UpdateAndReloadConfig(configJson);
@@ -235,7 +235,7 @@ internal sealed class LinuxNatsBindings : INatsBindings
 **Responsibilities:**
 
 - JSON deserialization
-- ServerConfig to server.Options conversion
+- BrokerConfiguration to server.Options conversion
 - NATS server instance management
 - Error propagation back to .NET
 - Memory management for returned strings
@@ -246,7 +246,7 @@ internal sealed class LinuxNatsBindings : INatsBindings
 //export StartServer
 func StartServer(configJSON *C.char) *C.char {
     config := C.GoString(configJSON)
-    var serverConfig ServerConfig
+    var serverConfig BrokerConfiguration
     json.Unmarshal([]byte(config), &serverConfig)
 
     opts := &server.Options{
@@ -269,7 +269,7 @@ func StartServer(configJSON *C.char) *C.char {
 //export UpdateAndReloadConfig
 func UpdateAndReloadConfig(configJSON *C.char) *C.char {
     config := C.GoString(configJSON)
-    var newConfig ServerConfig
+    var newConfig BrokerConfiguration
     json.Unmarshal([]byte(config), &newConfig)
 
     currentOpts := server.Options{}
@@ -329,7 +329,7 @@ This enables zero-downtime configuration updates for:
 └────────────────────────────────────────────────────────────────┘
                               │
                               ▼
-var updatedConfig = new ServerConfig { Debug = false };
+var updatedConfig = new BrokerConfiguration { Debug = false };
 string result = server.UpdateConfig(updatedConfig);
                               │
                               ▼
@@ -365,7 +365,7 @@ extern IntPtr _updateAndReloadConfig(string configJson);
                               │
                               ▼
 config := C.GoString(configJSON)
-var newConfig ServerConfig
+var newConfig BrokerConfiguration
 json.Unmarshal([]byte(config), &newConfig)
                               │
                               ▼
@@ -468,7 +468,7 @@ func FreeString(ptr *C.char) {
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  ┌──────────────────┐  ┌──────────────────┐               │
-│  │ ServerConfig Obj │  │  Config File     │               │
+│  │ BrokerConfiguration Obj │  │  Config File     │               │
 │  │ (Type-safe)      │  │  (.conf)         │               │
 │  └──────────────────┘  └──────────────────┘               │
 │           │                      │                          │
@@ -558,10 +558,10 @@ DotGnatly tracks configuration state through:
 ```csharp
 public class ConfigurationManager
 {
-    private readonly NatsServer _server;
-    private readonly Stack<ServerConfig> _configHistory;
+    private readonly NatsController _server;
+    private readonly Stack<BrokerConfiguration> _configHistory;
 
-    public bool UpdateConfiguration(ServerConfig newConfig)
+    public bool UpdateConfiguration(BrokerConfiguration newConfig)
     {
         // Save current config for potential rollback
         var currentInfo = _server.GetInfo();
@@ -604,11 +604,11 @@ public class ConfigurationManager
 **Architecture:**
 
 ```csharp
-public class NatsServerWithNotifications : NatsServer
+public class NatsControllerWithNotifications : NatsController
 {
     public event EventHandler<ConfigurationChangedEventArgs> ConfigurationChanged;
 
-    public new string UpdateConfig(ServerConfig config)
+    public new string UpdateConfig(BrokerConfiguration config)
     {
         var previousInfo = GetInfo();
         string result = base.UpdateConfig(config);
@@ -638,7 +638,7 @@ public class ConfigurationChangedEventArgs : EventArgs
 }
 
 // Usage
-var server = new NatsServerWithNotifications();
+var server = new NatsControllerWithNotifications();
 server.ConfigurationChanged += (sender, args) =>
 {
     Console.WriteLine($"Configuration changed at {args.ChangeTimestamp}");
@@ -695,12 +695,12 @@ server.ConfigurationChanged += (sender, args) =>
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │           Application Code                            │  │
-│  │  using var server = new NatsServer();                │  │
+│  │  using var server = new NatsController();                │  │
 │  │  server.Start(config);                               │  │
 │  └──────────────────┬───────────────────────────────────┘  │
 │                     │                                       │
 │  ┌──────────────────┴───────────────────────────────────┐  │
-│  │         NatsServer Wrapper (C#)                      │  │
+│  │         NatsController Wrapper (C#)                      │  │
 │  └──────────────────┬───────────────────────────────────┘  │
 │                     │ P/Invoke                             │
 │  ┌──────────────────┴───────────────────────────────────┐  │
@@ -768,7 +768,7 @@ server.ConfigurationChanged += (sender, args) =>
 ```csharp
 // Benchmark results
 var sw = Stopwatch.StartNew();
-using var server = new NatsServer();
+using var server = new NatsController();
 server.Start();
 sw.Stop();
 // Typical: 200-300ms without JetStream
@@ -780,7 +780,7 @@ sw.Stop();
 ```csharp
 // Hot reload performance
 var sw = Stopwatch.StartNew();
-server.UpdateConfig(new ServerConfig { Debug = false });
+server.UpdateConfig(new BrokerConfiguration { Debug = false });
 sw.Stop();
 // Typical: 5-20ms
 // Zero client disconnections
@@ -954,7 +954,7 @@ This document provides visual diagrams to help understand the DotGnatly architec
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                   Your Application Code                    │  │
 │  │                                                            │  │
-│  │  using var server = new NatsServer();                     │  │
+│  │  using var server = new NatsController();                     │  │
 │  │  server.Start(config);                                    │  │
 │  │  server.UpdateConfig(newConfig);  // Hot reload           │  │
 │  └───────────────────────┬───────────────────────────────────┘  │
@@ -962,7 +962,7 @@ This document provides visual diagrams to help understand the DotGnatly architec
 │                          │ Type-safe API calls                   │
 │                          ▼                                       │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │              NatsServer C# Wrapper Class                   │  │
+│  │              NatsController C# Wrapper Class                   │  │
 │  │                                                            │  │
 │  │  • Configuration serialization (JSON)                     │  │
 │  │  • Platform detection (Windows/Linux)                     │  │
@@ -998,7 +998,7 @@ This document provides visual diagrams to help understand the DotGnatly architec
 │  │  //export ShutdownServer                                  │  │
 │  │                                                            │  │
 │  │  • JSON parsing                                           │  │
-│  │  • ServerConfig → server.Options conversion               │  │
+│  │  • BrokerConfiguration → server.Options conversion               │  │
 │  │  • C string memory management                             │  │
 │  └───────────────────────┬───────────────────────────────────┘  │
 │                          │                                       │
@@ -1051,7 +1051,7 @@ C# Application
      │
      │ server.Start(config)
      ▼
-NatsServer.cs
+NatsController.cs
      │
      │ 1. Serialize config to JSON
      │    JsonSerializer.Serialize(config)
@@ -1102,7 +1102,7 @@ WindowsNatsBindings.cs / LinuxNatsBindings.cs
      │
      │ return IntPtr (C string pointer)
      ▼
-NatsServer.cs
+NatsController.cs
      │
      │ 10. Marshal pointer to .NET string
      │     Marshal.PtrToStringAnsi(resultPtr)
@@ -1129,7 +1129,7 @@ C# Application
 │                    Application Layer                          │
 └──────────────────────────┬───────────────────────────────────┘
                            │
-                           │ var newConfig = new ServerConfig
+                           │ var newConfig = new BrokerConfiguration
                            │ {
                            │     Debug = false,
                            │     HTTPPort = 8223
@@ -1139,7 +1139,7 @@ C# Application
 ┌──────────────────────────────────────────────────────────────┐
 │                  Configuration Object                         │
 │                                                                │
-│  ServerConfig {                                               │
+│  BrokerConfiguration {                                               │
 │      Debug: false,                                            │
 │      HTTPPort: 8223                                           │
 │  }                                                             │
@@ -1219,7 +1219,7 @@ Time: T1 - UpdateConfig() called
 ┌────────────────────────────────────────────────────┐
 │         Configuration Update Request                │
 │                                                     │
-│  server.UpdateConfig(new ServerConfig              │
+│  server.UpdateConfig(new BrokerConfiguration              │
 │  {                                                  │
 │      Debug = false,                                 │
 │      HTTPPort = 8223                                │
@@ -1263,7 +1263,7 @@ Time: T3 onwards - New configuration active
 │  │         ASP.NET Core Web API                   │ │
 │  │                                                 │ │
 │  │  Startup.cs:                                   │ │
-│  │    services.AddSingleton<NatsServer>();        │ │
+│  │    services.AddSingleton<NatsController>();        │ │
 │  │                                                 │ │
 │  │  Controllers use NATS for:                     │ │
 │  │  • Internal messaging                          │ │
@@ -1415,10 +1415,10 @@ Configuration Changes:
 ┌─────────────────────────────────────────────────────┐
 │            C# Application Process                    │
 │                                                      │
-│  using NatsSharp;                                   │
+│  using DotGnatly.Nats;                                   │
 │                                                      │
-│  var server = new NatsServer();                     │
-│  server.Start(new ServerConfig { ... });            │
+│  var server = new NatsController();                     │
+│  server.Start(new BrokerConfiguration { ... });            │
 │                                                      │
 │  // Can do everything:                               │
 │  // ✓ Start/Stop server                             │
