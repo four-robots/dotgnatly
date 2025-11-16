@@ -1,10 +1,10 @@
-# Claude.MD - MessageBroker.NET
+# Claude.MD - DotGnatly
 
-This file provides context and guidance for AI assistants working with the MessageBroker.NET codebase.
+This file provides context and guidance for AI assistants working with the DotGnatly codebase.
 
 ## Project Overview
 
-MessageBroker.NET is a .NET library that provides programmatic control over NATS server instances with enhanced runtime reconfiguration capabilities. Unlike the standard nats-csharp client library, this project provides **full server control** with hot configuration reload, validation, versioning, and rollback.
+DotGnatly is a .NET library that provides programmatic control over NATS server instances with enhanced runtime reconfiguration capabilities. Unlike the standard nats-csharp client library, this project provides **full server control** with hot configuration reload, validation, versioning, and rollback.
 
 **Key Differentiator**: Server control with runtime reconfiguration, not just client operations.
 
@@ -23,9 +23,9 @@ MessageBroker.NET is a .NET library that provides programmatic control over NATS
 ```
 Application Layer (Consumer Code)
     ↓
-MessageBroker.Core (Abstractions, Validation, Versioning, Events)
+DotGnatly.Core (Abstractions, Validation, Versioning, Events)
     ↓
-MessageBroker.Nats (NATS Implementation, P/Invoke Bindings)
+DotGnatly.Nats (NATS Implementation, P/Invoke Bindings)
     ↓
 Native Go Library (nats-bindings.dll/.so)
     ↓
@@ -35,18 +35,18 @@ NATS Server v2.11 (Embedded)
 ## Project Structure
 
 ```
-MessageBroker.NET/
+DotGnatly/
 ├── src/
-│   ├── MessageBroker.Core/          # Core abstractions and models
+│   ├── DotGnatly.Core/          # Core abstractions and models
 │   │   ├── Abstractions/            # Interfaces (IBrokerController, IConfigurationValidator)
 │   │   ├── Configuration/           # Config models with versioning
 │   │   ├── Validation/              # Pre-apply validation system
 │   │   └── Events/                  # Change notification events
-│   ├── MessageBroker.Nats/          # NATS-specific implementation
+│   ├── DotGnatly.Nats/          # NATS-specific implementation
 │   │   ├── Bindings/                # P/Invoke layer (Windows/Linux)
 │   │   ├── Implementation/          # NatsController
 │   │   └── nats-bindings.dll/.so    # Native Go library (copied from native/)
-│   └── MessageBroker.Examples/      # Interactive examples and tests
+│   └── DotGnatly.Examples/      # Interactive examples and tests
 ├── native/                          # Go source code for native bindings
 │   ├── nats-bindings.go             # cgo bindings implementation
 │   ├── go.mod                       # Go module dependencies
@@ -60,7 +60,7 @@ MessageBroker.NET/
 │   ├── ARCHITECTURE.md
 │   └── ...
 ├── nats-csharp/                     # Original reference implementation
-├── MessageBroker.NET.sln            # Solution file
+├── DotGnatly.sln            # Solution file
 ├── README.md                        # Main project README
 ├── PROJECT_SUMMARY.md               # Detailed project summary
 └── CLAUDE.md                        # This file
@@ -68,7 +68,7 @@ MessageBroker.NET/
 
 ## Core Components
 
-### MessageBroker.Core (18 files, ~1,500 LOC)
+### DotGnatly.Core (18 files, ~1,500 LOC)
 
 **Key Interfaces:**
 - `IBrokerController` - Main broker control interface (ConfigureAsync, ApplyChangesAsync, etc.)
@@ -90,7 +90,7 @@ MessageBroker.NET/
 - `ConfigurationChanging` - Pre-change event (cancelable)
 - `ConfigurationChanged` - Post-change event with diff
 
-### MessageBroker.Nats (6 files)
+### DotGnatly.Nats (6 files)
 
 **Main Implementation:**
 - `NatsController` - Core IBrokerController implementation
@@ -122,13 +122,13 @@ cd native
 
 # 2. Build entire solution
 cd ..
-dotnet build MessageBroker.NET.sln
+dotnet build DotGnatly.sln
 
 # Build specific project
-dotnet build src/MessageBroker.Core/MessageBroker.Core.csproj
+dotnet build src/DotGnatly.Core/DotGnatly.Core.csproj
 
 # Build in Release mode
-dotnet build MessageBroker.NET.sln -c Release
+dotnet build DotGnatly.sln -c Release
 ```
 
 **Important**: The native bindings must be built before the .NET projects, as the .NET code depends on `nats-bindings.dll` (Windows) or `nats-bindings.so` (Linux).
@@ -137,17 +137,17 @@ dotnet build MessageBroker.NET.sln -c Release
 
 ```bash
 # Interactive menu
-cd src/MessageBroker.Examples
+cd src/DotGnatly.Examples
 dotnet run
 
 # Automated tests
-cd src/MessageBroker.Examples
+cd src/DotGnatly.Examples
 dotnet run -- test
 ```
 
 ### Testing
 
-The project uses a simple test framework in `MessageBroker.Examples/SimpleTest.cs`:
+The project uses a simple test framework in `DotGnatly.Examples/SimpleTest.cs`:
 - 7 comprehensive test scenarios
 - All tests currently passing
 - Tests cover: basic config, hot reload, validation, rollback, events, info, shutdown
@@ -157,8 +157,8 @@ The project uses a simple test framework in `MessageBroker.Examples/SimpleTest.c
 The project is configured for NuGet packaging with multi-targeting support.
 
 **Packages:**
-- `MessageBroker.Core` - Core abstractions (no dependencies)
-- `MessageBroker.Nats` - NATS implementation with native bindings
+- `DotGnatly.Core` - Core abstractions (no dependencies)
+- `DotGnatly.Nats` - NATS implementation with native bindings
 
 **Multi-Targeting:**
 - Supports .NET 8.0, 9.0, and 10.0
@@ -173,8 +173,8 @@ The project is configured for NuGet packaging with multi-targeting support.
 
 # Manual method
 cd native && ./build.sh && cd ..  # Build native bindings first
-dotnet pack src/MessageBroker.Core/MessageBroker.Core.csproj -c Release -o ./nupkg
-dotnet pack src/MessageBroker.Nats/MessageBroker.Nats.csproj -c Release -o ./nupkg
+dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release -o ./nupkg
+dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release -o ./nupkg
 ```
 
 **Native Bindings Structure:**
@@ -191,7 +191,7 @@ NuGet automatically deploys the correct native binary based on the target runtim
 
 **Testing Packages Locally:**
 ```bash
-dotnet add package MessageBroker.Nats --version 1.0.0 --source ./nupkg
+dotnet add package DotGnatly.Nats --version 1.0.0 --source ./nupkg
 ```
 
 See **[NUGET_PACKAGING.md](NUGET_PACKAGING.md)** for comprehensive packaging documentation, including publishing, versioning, and CI/CD integration.
@@ -278,11 +278,11 @@ await controller.RollbackAsync(toVersion: 2);
 
 ### Adding New Configuration Properties
 
-1. Add property to `BrokerConfiguration` in `MessageBroker.Core/Configuration/BrokerConfiguration.cs`
-2. Add validation rules in `MessageBroker.Core/Validation/ConfigurationValidator.cs`
-3. Update mapping in `MessageBroker.Nats/ConfigurationMapper.cs`
-4. Add fluent API extension in `MessageBroker.Nats/Extensions/NatsControllerExtensions.cs`
-5. Add example in `MessageBroker.Examples/`
+1. Add property to `BrokerConfiguration` in `DotGnatly.Core/Configuration/BrokerConfiguration.cs`
+2. Add validation rules in `DotGnatly.Core/Validation/ConfigurationValidator.cs`
+3. Update mapping in `DotGnatly.Nats/ConfigurationMapper.cs`
+4. Add fluent API extension in `DotGnatly.Nats/Extensions/NatsControllerExtensions.cs`
+5. Add example in `DotGnatly.Examples/`
 6. Update documentation in `docs/API_DESIGN.md`
 
 ### Adding Custom Validation Rules
@@ -324,7 +324,7 @@ cd native
    ```
 2. Run `cd native && go get github.com/nats-io/nats-server/v2@v2.11.0 && go mod tidy`
 3. Rebuild: `./build.sh` or `.\build.ps1`
-4. Test thoroughly with `cd src/MessageBroker.Examples && dotnet run -- test`
+4. Test thoroughly with `cd src/DotGnatly.Examples && dotnet run -- test`
 
 See **[native/README.md](../native/README.md)** for comprehensive build documentation.
 
@@ -348,22 +348,22 @@ See **[native/README.md](../native/README.md)** for comprehensive build document
 ## File Locations Reference
 
 ### Configuration Models
-- `src/MessageBroker.Core/Configuration/BrokerConfiguration.cs` - Main config model
-- `src/MessageBroker.Core/Configuration/ConfigurationVersion.cs` - Version tracking
-- `src/MessageBroker.Core/Configuration/ConfigurationDiff.cs` - Change detection
+- `src/DotGnatly.Core/Configuration/BrokerConfiguration.cs` - Main config model
+- `src/DotGnatly.Core/Configuration/ConfigurationVersion.cs` - Version tracking
+- `src/DotGnatly.Core/Configuration/ConfigurationDiff.cs` - Change detection
 
 ### Core Interfaces
-- `src/MessageBroker.Core/Abstractions/IBrokerController.cs` - Main interface
-- `src/MessageBroker.Core/Abstractions/IConfigurationValidator.cs` - Validation interface
+- `src/DotGnatly.Core/Abstractions/IBrokerController.cs` - Main interface
+- `src/DotGnatly.Core/Abstractions/IConfigurationValidator.cs` - Validation interface
 
 ### Implementation
-- `src/MessageBroker.Nats/Implementation/NatsController.cs` - Main implementation
-- `src/MessageBroker.Nats/ConfigurationMapper.cs` - Config mapping
-- `src/MessageBroker.Nats/Extensions/NatsControllerExtensions.cs` - Fluent API
+- `src/DotGnatly.Nats/Implementation/NatsController.cs` - Main implementation
+- `src/DotGnatly.Nats/ConfigurationMapper.cs` - Config mapping
+- `src/DotGnatly.Nats/Extensions/NatsControllerExtensions.cs` - Fluent API
 
 ### Examples
-- `src/MessageBroker.Examples/Program.cs` - Interactive examples
-- `src/MessageBroker.Examples/SimpleTest.cs` - Automated tests
+- `src/DotGnatly.Examples/Program.cs` - Interactive examples
+- `src/DotGnatly.Examples/SimpleTest.cs` - Automated tests
 
 ## Documentation
 
@@ -440,16 +440,16 @@ Total: 5,592 lines, 196 KB of documentation
 
 ```bash
 # Build
-dotnet build MessageBroker.NET.sln
+dotnet build DotGnatly.sln
 
 # Run examples
-cd src/MessageBroker.Examples && dotnet run
+cd src/DotGnatly.Examples && dotnet run
 
 # Run tests
-cd src/MessageBroker.Examples && dotnet run -- test
+cd src/DotGnatly.Examples && dotnet run -- test
 
 # Clean
-dotnet clean MessageBroker.NET.sln
+dotnet clean DotGnatly.sln
 ```
 
 ### Essential Code Patterns
@@ -476,7 +476,7 @@ await controller.ShutdownAsync();
 ## Support Resources
 
 - **Documentation**: `docs/` folder (5,592 lines)
-- **Examples**: `src/MessageBroker.Examples/`
+- **Examples**: `src/DotGnatly.Examples/`
 - **Architecture**: `docs/ARCHITECTURE.md`
 - **API Reference**: `docs/API_DESIGN.md`
 - **NATS Community**: https://slack.nats.io

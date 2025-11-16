@@ -1,8 +1,8 @@
-# MessageBroker.NET Architecture
+# DotGnatly Architecture
 
 ## Overview
 
-MessageBroker.NET is a .NET library that provides full control over NATS server instances via Go language bindings. The architecture enables runtime reconfiguration, advanced monitoring, and multi-tenant account management while maintaining the performance and reliability of the native NATS server implementation.
+DotGnatly is a .NET library that provides full control over NATS server instances via Go language bindings. The architecture enables runtime reconfiguration, advanced monitoring, and multi-tenant account management while maintaining the performance and reliability of the native NATS server implementation.
 
 ## Table of Contents
 
@@ -546,7 +546,7 @@ func FreeString(ptr *C.char) {
 
 ### Configuration Versioning
 
-MessageBroker.NET tracks configuration state through:
+DotGnatly tracks configuration state through:
 
 1. **Server State**: NATS server maintains current active configuration
 2. **Version Tracking**: Each configuration change creates a new version
@@ -687,7 +687,7 @@ server.ConfigurationChanged += (sender, args) =>
 - **Manual lifecycle**: Ops team manages server lifecycle
 - **No hot-reload**: Downtime required for config changes
 
-#### MessageBroker.NET Architecture
+#### DotGnatly Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -732,7 +732,7 @@ server.ConfigurationChanged += (sender, args) =>
 
 ### Feature Matrix
 
-| Capability | nats-csharp | MessageBroker.NET |
+| Capability | nats-csharp | DotGnatly |
 |-----------|-------------|-------------------|
 | **Architecture** | Client library | Server control + Client |
 | **Server Control** | None | Full (start, stop, reload) |
@@ -760,7 +760,7 @@ server.ConfigurationChanged += (sender, args) =>
 - Dependency: External server must be running
 - Bottleneck: Network latency
 
-**MessageBroker.NET:**
+**DotGnatly:**
 - Server startup: ~100-500ms
 - Includes: Server initialization + readiness check
 - Bottleneck: JetStream initialization (if enabled)
@@ -791,7 +791,7 @@ sw.Stop();
 **Per-Process Memory:**
 
 - nats-csharp client: ~5-10 MB
-- MessageBroker.NET server: ~50-100 MB (includes full NATS server)
+- DotGnatly server: ~50-100 MB (includes full NATS server)
 - JetStream enabled: +20-50 MB base overhead
 
 **Trade-off**: Higher memory usage for operational simplicity and control
@@ -819,7 +819,7 @@ Both architectures use the same NATS server implementation, so message throughpu
 │  │                                                │    │
 │  │  • REST API endpoints                         │    │
 │  │  • Business logic                             │    │
-│  │  • MessageBroker.NET integration              │    │
+│  │  • DotGnatly integration              │    │
 │  └──────────────────┬───────────────────────────┘    │
 │                     │                                 │
 │  ┌──────────────────┴───────────────────────────┐    │
@@ -917,7 +917,7 @@ spec:
 
 ## Summary
 
-MessageBroker.NET architecture provides:
+DotGnatly architecture provides:
 
 1. **Layered Design**: Clean separation between C#, bindings, and Go layers
 2. **Cross-Platform**: Windows and Linux support via platform-specific bindings

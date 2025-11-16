@@ -2,7 +2,7 @@
 set -e
 
 echo "======================================"
-echo "MessageBroker.NET NuGet Package Build"
+echo "DotGnatly NuGet Package Build"
 echo "======================================"
 echo ""
 
@@ -23,7 +23,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
     ./build.sh
     if [ -f "nats-bindings.so" ]; then
         echo "✓ Linux bindings built successfully"
-        cp nats-bindings.so ../src/MessageBroker.Nats/
+        cp nats-bindings.so ../src/DotGnatly.Nats/
     else
         echo "⚠ Warning: Linux bindings build failed"
     fi
@@ -35,7 +35,7 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
     ./build.ps1
     if [ -f "nats-bindings.dll" ]; then
         echo "✓ Windows bindings built successfully"
-        cp nats-bindings.dll ../src/MessageBroker.Nats/
+        cp nats-bindings.dll ../src/DotGnatly.Nats/
     else
         echo "⚠ Warning: Windows bindings build failed"
     fi
@@ -46,30 +46,30 @@ cd ..
 # Clean previous builds
 echo ""
 echo "Step 2: Cleaning previous builds..."
-dotnet clean MessageBroker.NET.sln -c Release
+dotnet clean DotGnatly.sln -c Release
 
 # Restore dependencies
 echo ""
 echo "Step 3: Restoring dependencies..."
-dotnet restore MessageBroker.NET.sln
+dotnet restore DotGnatly.sln
 
 # Build solution
 echo ""
 echo "Step 4: Building solution (multi-targeting: net8.0, net9.0, net10.0)..."
-dotnet build MessageBroker.NET.sln -c Release --no-restore
+dotnet build DotGnatly.sln -c Release --no-restore
 
 # Create output directory for packages
 mkdir -p ./nupkg
 
-# Pack MessageBroker.Core
+# Pack DotGnatly.Core
 echo ""
-echo "Step 5: Creating MessageBroker.Core NuGet package..."
-dotnet pack src/MessageBroker.Core/MessageBroker.Core.csproj -c Release --no-build --output ./nupkg
+echo "Step 5: Creating DotGnatly.Core NuGet package..."
+dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release --no-build --output ./nupkg
 
-# Pack MessageBroker.Nats
+# Pack DotGnatly.Nats
 echo ""
-echo "Step 6: Creating MessageBroker.Nats NuGet package..."
-dotnet pack src/MessageBroker.Nats/MessageBroker.Nats.csproj -c Release --no-build --output ./nupkg
+echo "Step 6: Creating DotGnatly.Nats NuGet package..."
+dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release --no-build --output ./nupkg
 
 # List created packages
 echo ""
@@ -82,9 +82,9 @@ ls -lh ./nupkg/*.nupkg
 
 echo ""
 echo "To publish to NuGet.org:"
-echo "  dotnet nuget push ./nupkg/MessageBroker.Core.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json"
-echo "  dotnet nuget push ./nupkg/MessageBroker.Nats.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json"
+echo "  dotnet nuget push ./nupkg/DotGnatly.Core.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json"
+echo "  dotnet nuget push ./nupkg/DotGnatly.Nats.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json"
 echo ""
 echo "To install locally for testing:"
-echo "  dotnet add package MessageBroker.Nats --version 1.0.0 --source ./nupkg"
+echo "  dotnet add package DotGnatly.Nats --version 1.0.0 --source ./nupkg"
 echo ""

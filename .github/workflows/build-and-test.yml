@@ -58,19 +58,19 @@ jobs:
         .\build.ps1
 
     - name: Restore dependencies
-      run: dotnet restore MessageBroker.NET.sln
+      run: dotnet restore DotGnatly.sln
 
     - name: Build solution
-      run: dotnet build MessageBroker.NET.sln --configuration Release --no-restore
+      run: dotnet build DotGnatly.sln --configuration Release --no-restore
 
     - name: Run unit tests
-      run: dotnet test src/MessageBroker.Core.Tests/MessageBroker.Core.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=core-test-results.trx"
+      run: dotnet test src/DotGnatly.Core.Tests/DotGnatly.Core.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=core-test-results.trx"
 
     - name: Run Nats unit tests
-      run: dotnet test src/MessageBroker.Nats.Tests/MessageBroker.Nats.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=nats-test-results.trx"
+      run: dotnet test src/DotGnatly.Nats.Tests/DotGnatly.Nats.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=nats-test-results.trx"
 
     - name: Run integration tests
-      run: dotnet run --project src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.csproj --configuration Release --no-build
+      run: dotnet run --project src/DotGnatly.IntegrationTests/DotGnatly.IntegrationTests.csproj --configuration Release --no-build
       continue-on-error: false
 
     - name: Upload test results
@@ -119,14 +119,14 @@ jobs:
         ./build.sh
 
     - name: Restore dependencies
-      run: dotnet restore MessageBroker.NET.sln
+      run: dotnet restore DotGnatly.sln
 
     - name: Build solution
-      run: dotnet build MessageBroker.NET.sln --configuration Release --no-restore
+      run: dotnet build DotGnatly.sln --configuration Release --no-restore
 
     - name: Run tests with coverage
       run: |
-        dotnet test MessageBroker.NET.sln \
+        dotnet test DotGnatly.sln \
           --configuration Release \
           --no-build \
           --verbosity normal \

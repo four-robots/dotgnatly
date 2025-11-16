@@ -5,7 +5,7 @@
 
 ## Overview
 
-This implementation adds comprehensive monitoring and connection management capabilities to MessageBroker.NET by exposing NATS server monitoring endpoints that were previously unavailable.
+This implementation adds comprehensive monitoring and connection management capabilities to DotGnatly by exposing NATS server monitoring endpoints that were previously unavailable.
 
 ## What Was Implemented
 
@@ -49,7 +49,7 @@ Added the following exported functions:
   - Returns comprehensive client connection details
   - Uses `server.Connz()` with specific CID filter
 
-### 2. C# Bindings (`src/MessageBroker.Nats/Bindings/NatsBindings.cs`)
+### 2. C# Bindings (`src/DotGnatly.Nats/Bindings/NatsBindings.cs`)
 
 Added P/Invoke declarations for both Windows and Linux:
 
@@ -68,7 +68,7 @@ IntPtr GetClientInfo(ulong clientId);
 - **WindowsNatsBindings**: DllImport from `nats-bindings.dll`
 - **LinuxNatsBindings**: DllImport from `nats-bindings.so`
 
-### 3. Controller Methods (`src/MessageBroker.Nats/Implementation/NatsController.cs`)
+### 3. Controller Methods (`src/DotGnatly.Nats/Implementation/NatsController.cs`)
 
 Added public async methods with full error handling and thread safety:
 
@@ -130,8 +130,8 @@ Created comprehensive documentation:
 
 ### Modified Files
 1. `native/nats-bindings.go` - Added 7 monitoring/management functions
-2. `src/MessageBroker.Nats/Bindings/NatsBindings.cs` - Added 7 P/Invoke declarations (Windows + Linux)
-3. `src/MessageBroker.Nats/Implementation/NatsController.cs` - Added 8 public methods + 1 helper
+2. `src/DotGnatly.Nats/Bindings/NatsBindings.cs` - Added 7 P/Invoke declarations (Windows + Linux)
+3. `src/DotGnatly.Nats/Implementation/NatsController.cs` - Added 8 public methods + 1 helper
 4. `src/MessageBroker.IntegrationTests/IntegrationTestRunner.cs` - Registered MonitoringTestSuite
 
 ### New Files
@@ -194,7 +194,7 @@ See `TODO_NATS_FEATURES.md` for complete list. High-priority remaining items:
 cd native && ./build.sh
 
 # Build solution
-dotnet build MessageBroker.NET.sln
+dotnet build DotGnatly.sln
 
 # Run integration tests
 cd src/MessageBroker.IntegrationTests
@@ -289,7 +289,7 @@ This implementation provides production-ready monitoring capabilities essential 
 - **Management**: Client connection management, JetStream oversight
 - **Billing/Quotas**: Account-level statistics (when Accountz implemented)
 
-All code follows MessageBroker.NET conventions and maintains the library's quality standards.
+All code follows DotGnatly conventions and maintains the library's quality standards.
 
 ---
 

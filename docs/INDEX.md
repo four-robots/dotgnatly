@@ -1,6 +1,6 @@
-# MessageBroker.NET Documentation Index
+# DotGnatly Documentation Index
 
-Complete documentation for MessageBroker.NET - a .NET library providing full control over NATS servers with runtime reconfiguration capabilities.
+Complete documentation for DotGnatly - a .NET library providing full control over NATS servers with runtime reconfiguration capabilities.
 
 ## Documentation Statistics
 
@@ -16,10 +16,10 @@ Complete documentation for MessageBroker.NET - a .NET library providing full con
 ### For New Users
 
 1. **[README.md](./README.md)** - Start here
-   - Overview of MessageBroker.NET
+   - Overview of DotGnatly
    - Quick 30-second start
    - Key features and benefits
-   - Why use MessageBroker.NET vs nats-csharp
+   - Why use DotGnatly vs nats-csharp
 
 2. **[GETTING_STARTED.md](./GETTING_STARTED.md)** - Installation and first steps
    - Prerequisites and installation
@@ -191,7 +191,7 @@ Complete documentation for MessageBroker.NET - a .NET library providing full con
   - Sidecar deployment
   - Hub-and-spoke (leaf nodes)
 - Comparison diagrams:
-  - nats-csharp vs MessageBroker.NET
+  - nats-csharp vs DotGnatly
   - Feature comparison matrix
 - Data flow diagrams
 
@@ -241,7 +241,7 @@ Complete documentation for MessageBroker.NET - a .NET library providing full con
 → [GETTING_STARTED.md](./GETTING_STARTED.md) - Installation section
 → Time: 5 minutes
 
-#### Understand what MessageBroker.NET does
+#### Understand what DotGnatly does
 → [README.md](./README.md) - Overview section
 → Time: 10 minutes
 
@@ -309,7 +309,7 @@ Complete documentation for MessageBroker.NET - a .NET library providing full con
 ### New User Journey
 
 1. **[README.md](./README.md)** (10 min)
-   - Understand what MessageBroker.NET is
+   - Understand what DotGnatly is
    - See the 30-second quick start
    - Learn key benefits
 
@@ -403,7 +403,7 @@ Complete documentation for MessageBroker.NET - a .NET library providing full con
 - **[API_DESIGN.md](./API_DESIGN.md)** - Complete comparison section
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Architectural differences
 - **[DIAGRAMS.md](./DIAGRAMS.md)** - Side-by-side diagrams
-- **[README.md](./README.md)** - Why MessageBroker.NET?
+- **[README.md](./README.md)** - Why DotGnatly?
 
 ---
 
@@ -482,7 +482,7 @@ Contributions welcome! Documentation guidelines:
 
 **Documentation Version**: 1.0.0
 **Last Updated**: November 2024
-**Covers**: MessageBroker.NET v1.0.0
+**Covers**: DotGnatly v1.0.0
 **NATS Server Version**: 2.10.x
 
 ---
@@ -511,4 +511,4 @@ Complete documentation coverage:
 
 Start with [README.md](./README.md) and explore from there!
 
-Happy coding with MessageBroker.NET!
+Happy coding with DotGnatly!

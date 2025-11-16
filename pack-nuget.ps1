@@ -1,10 +1,10 @@
-# MessageBroker.NET NuGet Package Build Script for Windows
+# DotGnatly NuGet Package Build Script for Windows
 param(
     [switch]$SkipNativeBuild = $false
 )
 
 Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "MessageBroker.NET NuGet Package Build" -ForegroundColor Cyan
+Write-Host "DotGnatly NuGet Package Build" -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -25,7 +25,7 @@ if (-not $SkipNativeBuild) {
 
     if (Test-Path "nats-bindings.dll") {
         Write-Host "✓ Windows bindings built successfully" -ForegroundColor Green
-        Copy-Item nats-bindings.dll ..\src\MessageBroker.Nats\ -Force
+        Copy-Item nats-bindings.dll ..\src\DotGnatly.Nats\ -Force
     } else {
         Write-Host "⚠ Warning: Windows bindings build failed" -ForegroundColor Yellow
     }
@@ -38,17 +38,17 @@ if (-not $SkipNativeBuild) {
 # Clean previous builds
 Write-Host ""
 Write-Host "Step 2: Cleaning previous builds..." -ForegroundColor Yellow
-dotnet clean MessageBroker.NET.sln -c Release
+dotnet clean DotGnatly.sln -c Release
 
 # Restore dependencies
 Write-Host ""
 Write-Host "Step 3: Restoring dependencies..." -ForegroundColor Yellow
-dotnet restore MessageBroker.NET.sln
+dotnet restore DotGnatly.sln
 
 # Build solution
 Write-Host ""
 Write-Host "Step 4: Building solution (multi-targeting: net8.0, net9.0, net10.0)..." -ForegroundColor Yellow
-dotnet build MessageBroker.NET.sln -c Release --no-restore
+dotnet build DotGnatly.sln -c Release --no-restore
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
@@ -58,15 +58,15 @@ if ($LASTEXITCODE -ne 0) {
 # Create output directory for packages
 New-Item -ItemType Directory -Force -Path .\nupkg | Out-Null
 
-# Pack MessageBroker.Core
+# Pack DotGnatly.Core
 Write-Host ""
-Write-Host "Step 5: Creating MessageBroker.Core NuGet package..." -ForegroundColor Yellow
-dotnet pack src\MessageBroker.Core\MessageBroker.Core.csproj -c Release --no-build --output .\nupkg
+Write-Host "Step 5: Creating DotGnatly.Core NuGet package..." -ForegroundColor Yellow
+dotnet pack src\DotGnatly.Core\DotGnatly.Core.csproj -c Release --no-build --output .\nupkg
 
-# Pack MessageBroker.Nats
+# Pack DotGnatly.Nats
 Write-Host ""
-Write-Host "Step 6: Creating MessageBroker.Nats NuGet package..." -ForegroundColor Yellow
-dotnet pack src\MessageBroker.Nats\MessageBroker.Nats.csproj -c Release --no-build --output .\nupkg
+Write-Host "Step 6: Creating DotGnatly.Nats NuGet package..." -ForegroundColor Yellow
+dotnet pack src\DotGnatly.Nats\DotGnatly.Nats.csproj -c Release --no-build --output .\nupkg
 
 # List created packages
 Write-Host ""
@@ -81,9 +81,9 @@ Get-ChildItem .\nupkg\*.nupkg | ForEach-Object {
 
 Write-Host ""
 Write-Host "To publish to NuGet.org:" -ForegroundColor Yellow
-Write-Host "  dotnet nuget push .\nupkg\MessageBroker.Core.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json" -ForegroundColor Gray
-Write-Host "  dotnet nuget push .\nupkg\MessageBroker.Nats.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json" -ForegroundColor Gray
+Write-Host "  dotnet nuget push .\nupkg\DotGnatly.Core.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json" -ForegroundColor Gray
+Write-Host "  dotnet nuget push .\nupkg\DotGnatly.Nats.1.0.0.nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json" -ForegroundColor Gray
 Write-Host ""
 Write-Host "To install locally for testing:" -ForegroundColor Yellow
-Write-Host "  dotnet add package MessageBroker.Nats --version 1.0.0 --source .\nupkg" -ForegroundColor Gray
+Write-Host "  dotnet add package DotGnatly.Nats --version 1.0.0 --source .\nupkg" -ForegroundColor Gray
 Write-Host ""

@@ -1,8 +1,8 @@
-# MessageBroker.NET - Project Summary
+# DotGnatly - Project Summary
 
 ## Overview
 
-MessageBroker.NET is an enhanced .NET control layer for NATS messaging server that provides significantly improved **runtime reconfiguration capabilities** compared to the original nats-csharp implementation. It maintains the same Go/P/Invoke architecture while adding:
+DotGnatly is an enhanced .NET control layer for NATS messaging server that provides significantly improved **runtime reconfiguration capabilities** compared to the original nats-csharp implementation. It maintains the same Go/P/Invoke architecture while adding:
 
 - Configuration versioning and rollback
 - Pre-apply validation with detailed error messages
@@ -15,20 +15,20 @@ MessageBroker.NET is an enhanced .NET control layer for NATS messaging server th
 ### 1. Solution Structure
 
 ```
-MessageBroker.NET/
+DotGnatly/
 ├── src/
-│   ├── MessageBroker.Core/          # Core abstractions and models
-│   ├── MessageBroker.Nats/          # NATS-specific implementation
-│   └── MessageBroker.Examples/      # Comprehensive examples
+│   ├── DotGnatly.Core/          # Core abstractions and models
+│   ├── DotGnatly.Nats/          # NATS-specific implementation
+│   └── DotGnatly.Examples/      # Comprehensive examples
 ├── docs/                            # Complete documentation (8 files, 5,592 lines)
 ├── nats-csharp/                     # Original reference implementation
-└── MessageBroker.NET.sln            # Solution file
+└── DotGnatly.sln            # Solution file
 ```
 
 **Build Status**: ✅ SUCCESS - 0 Warnings, 0 Errors
 **Test Status**: ✅ ALL TESTS PASSING
 
-### 2. MessageBroker.Core (18 files, ~1,500 LOC)
+### 2. DotGnatly.Core (18 files, ~1,500 LOC)
 
 **Core Interfaces:**
 - `IBrokerController` - Main broker control interface
@@ -59,7 +59,7 @@ MessageBroker.NET/
 - `ConfigurationDiffEngine` - Reflection-based diff calculation
 - `InMemoryConfigurationStore` - Thread-safe version storage
 
-### 3. MessageBroker.Nats (6 files)
+### 3. DotGnatly.Nats (6 files)
 
 **Bindings Layer** (copied from nats-csharp):
 - `INatsBindings` - Platform-agnostic P/Invoke interface
@@ -83,7 +83,7 @@ MessageBroker.NET/
 - `nats-bindings.dll` - 37 MB Windows native library
 - `nats-bindings.so` - Linux native library (when available)
 
-### 4. MessageBroker.Examples (12 files)
+### 4. DotGnatly.Examples (12 files)
 
 **Interactive Examples:**
 1. **Basic Server Startup** - Simple lifecycle management
@@ -127,7 +127,7 @@ server.UpdateConfig(newConfig);
 // No events, no rollback, no version tracking
 ```
 
-### MessageBroker.NET (Enhanced)
+### DotGnatly (Enhanced)
 
 ```csharp
 // Start server with validation and versioning
@@ -167,7 +167,7 @@ await controller
     .SetDebugAsync(true);
 ```
 
-## What Makes MessageBroker.NET Better
+## What Makes DotGnatly Better
 
 ### 1. **Zero-Downtime Reconfiguration**
 - Hot reload settings without restarting server
@@ -211,7 +211,7 @@ await controller
 ## Test Results
 
 ```
-=== MessageBroker.NET Simple Test ===
+=== DotGnatly Simple Test ===
 
 [TEST 1] Basic Configuration
   Result: SUCCESS ✅
@@ -246,23 +246,23 @@ await controller
 
 1. Build the solution:
    ```bash
-   cd C:\source\messagebroker.net
-   dotnet build MessageBroker.NET.sln
+   cd C:\source\dotgnatly
+   dotnet build DotGnatly.sln
    ```
 
 2. Add project references:
    ```xml
    <ItemGroup>
-     <ProjectReference Include="..\MessageBroker.Core\MessageBroker.Core.csproj" />
-     <ProjectReference Include="..\MessageBroker.Nats\MessageBroker.Nats.csproj" />
+     <ProjectReference Include="..\DotGnatly.Core\DotGnatly.Core.csproj" />
+     <ProjectReference Include="..\DotGnatly.Nats\DotGnatly.Nats.csproj" />
    </ItemGroup>
    ```
 
 ### Basic Usage
 
 ```csharp
-using MessageBroker.Core.Configuration;
-using MessageBroker.Nats.Implementation;
+using DotGnatly.Core.Configuration;
+using DotGnatly.Nats.Implementation;
 
 // Create controller
 using var controller = new NatsController();
@@ -293,7 +293,7 @@ await controller.ShutdownAsync();
 
 ```bash
 # Interactive menu
-cd src/MessageBroker.Examples
+cd src/DotGnatly.Examples
 dotnet run
 
 # Automated tests
@@ -307,10 +307,10 @@ dotnet run -- test
 │                  Application Layer                      │
 │              (Your Code using Controller)               │
 ├─────────────────────────────────────────────────────────┤
-│               MessageBroker.Core Layer                  │
+│               DotGnatly.Core Layer                  │
 │  (Abstractions, Validation, Versioning, Events)         │
 ├─────────────────────────────────────────────────────────┤
-│               MessageBroker.Nats Layer                  │
+│               DotGnatly.Nats Layer                  │
 │        (NatsController, Mapping, Extensions)            │
 ├─────────────────────────────────────────────────────────┤
 │                  P/Invoke Bindings                      │
@@ -347,7 +347,7 @@ dotnet run -- test
 
 ## Key Improvements Over nats-csharp
 
-| Feature | nats-csharp | MessageBroker.NET |
+| Feature | nats-csharp | DotGnatly |
 |---------|-------------|-------------------|
 | **Hot Reload** | ✅ Basic | ✅ Advanced with validation |
 | **Validation** | ❌ None | ✅ Comprehensive pre-apply |
@@ -383,18 +383,18 @@ dotnet run -- test
 ## File Locations
 
 ### Solution
-- `C:\source\messagebroker.net\MessageBroker.NET.sln`
+- `C:\source\dotgnatly\DotGnatly.sln`
 
 ### Projects
-- `C:\source\messagebroker.net\src\MessageBroker.Core\`
-- `C:\source\messagebroker.net\src\MessageBroker.Nats\`
-- `C:\source\messagebroker.net\src\MessageBroker.Examples\`
+- `C:\source\dotgnatly\src\DotGnatly.Core\`
+- `C:\source\dotgnatly\src\DotGnatly.Nats\`
+- `C:\source\dotgnatly\src\DotGnatly.Examples\`
 
 ### Documentation
-- `C:\source\messagebroker.net\docs\`
+- `C:\source\dotgnatly\docs\`
 
 ### Native Bindings
-- `C:\source\messagebroker.net\src\MessageBroker.Nats\nats-bindings.dll`
+- `C:\source\dotgnatly\src\DotGnatly.Nats\nats-bindings.dll`
 
 ## License & Attribution
 
@@ -407,7 +407,7 @@ Based on the nats-csharp project. Enhanced with:
 
 ## Summary
 
-MessageBroker.NET successfully extends nats-csharp with enterprise-grade runtime reconfiguration capabilities. It maintains full compatibility with the existing NATS server via Go bindings while adding:
+DotGnatly successfully extends nats-csharp with enterprise-grade runtime reconfiguration capabilities. It maintains full compatibility with the existing NATS server via Go bindings while adding:
 
 ✅ **Zero-downtime configuration changes**
 ✅ **Validation prevents invalid states**
