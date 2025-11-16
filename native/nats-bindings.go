@@ -676,7 +676,7 @@ func GetJsz(accountName *C.char) *C.char {
 		Config:   true,
 	}
 
-	// If account name provided, get account-specific JetStream info
+	// If account name provided, filter by account
 	if accountName != nil {
 		acctStr := C.GoString(accountName)
 		if acctStr != "" {
@@ -1000,7 +1000,7 @@ func GetAccountStatz(accountFilter *C.char) *C.char {
 
 	opts := &server.AccountStatzOptions{}
 
-	// If account filter provided, get specific account stats
+	// If account filter provided, set it
 	if accountFilter != nil {
 		acctStr := C.GoString(accountFilter)
 		if acctStr != "" {
@@ -1124,11 +1124,8 @@ func IsJetStreamEnabled() *C.char {
 
 	// Check if JetStream is configured
 	// Note: JetStream is now a struct, not a pointer in NATS 2.12+
-	if varz.JetStream.Config != nil {
-		// JetStream is enabled if max memory or max store is configured
-		if varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0 {
-			return C.CString("true")
-		}
+	if varz.JetStream.Config != nil && (varz.JetStream.Config.MaxMemory > 0 || varz.JetStream.Config.MaxStore > 0) {
+		return C.CString("true")
 	}
 
 	return C.CString("false")
