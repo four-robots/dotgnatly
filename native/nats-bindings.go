@@ -610,6 +610,7 @@ func GetConnz(subsFilter *C.char) *C.char {
 		if filterStr != "" {
 			opts.Subscriptions = true
 			opts.SubscriptionsDetail = true
+			opts.FilterSubject = filterStr
 		}
 	}
 
