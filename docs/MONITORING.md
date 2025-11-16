@@ -1,6 +1,6 @@
 # NATS Server Monitoring Guide
 
-This guide covers the comprehensive monitoring capabilities available in MessageBroker.NET for observing and managing NATS server instances.
+This guide covers the comprehensive monitoring capabilities available in DotGnatly for observing and managing NATS server instances.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This guide covers the comprehensive monitoring capabilities available in Message
 
 ## Overview
 
-MessageBroker.NET provides direct access to NATS server monitoring endpoints, enabling:
+DotGnatly provides direct access to NATS server monitoring endpoints, enabling:
 
 - **Real-time Observability**: Monitor connections, subscriptions, and JetStream statistics
 - **Cluster Health**: Track cluster routes and leaf node connections
@@ -639,7 +639,7 @@ public async Task TrackMetricsAsync(NatsController controller,
 
 - [API Design Documentation](API_DESIGN.md)
 - [Architecture Overview](ARCHITECTURE.md)
-- [Monitoring Examples](../src/MessageBroker.Examples/Monitoring/)
+- [Monitoring Examples](../src/DotGnatly.Examples/Monitoring/)
 - [NATS Monitoring Documentation](https://docs.nats.io/running-a-nats-service/nats_admin/monitoring)
 
 ---

@@ -1,9 +1,9 @@
-# MessageBroker.NET Quick Reference
+# DotGnatly Quick Reference
 
 ## Installation
 
 ```bash
-dotnet add package MessageBroker.NET
+dotnet add package DotGnatly
 ```
 
 ## 30-Second Quick Start

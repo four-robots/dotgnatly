@@ -1,8 +1,8 @@
-# Getting Started with MessageBroker.NET
+# Getting Started with DotGnatly
 
 ## Overview
 
-MessageBroker.NET is a .NET library that provides full control over NATS server instances with runtime reconfiguration capabilities. This guide will help you get started quickly.
+DotGnatly is a .NET library that provides full control over NATS server instances with runtime reconfiguration capabilities. This guide will help you get started quickly.
 
 ## Table of Contents
 
@@ -50,18 +50,18 @@ MessageBroker.NET is a .NET library that provides full control over NATS server 
 
 ```bash
 # .NET CLI
-dotnet add package MessageBroker.NET
+dotnet add package DotGnatly
 
 # Package Manager Console (Visual Studio)
-Install-Package MessageBroker.NET
+Install-Package DotGnatly
 ```
 
 ### Option 2: Build from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/messagebroker.net.git
-cd messagebroker.net
+git clone https://github.com/yourusername/dotgnatly.git
+cd dotgnatly
 
 # Build Go bindings
 cd nats-csharp/NatsBindings
@@ -129,7 +129,7 @@ Create a new console application:
 mkdir MyNatsApp
 cd MyNatsApp
 dotnet new console
-dotnet add package MessageBroker.NET
+dotnet add package DotGnatly
 ```
 
 Replace `Program.cs` with:
@@ -889,8 +889,8 @@ Explore example implementations:
 
 ```bash
 # Clone examples repository
-git clone https://github.com/yourusername/messagebroker.net-examples.git
-cd messagebroker.net-examples
+git clone https://github.com/yourusername/dotgnatly-examples.git
+cd dotgnatly-examples
 
 # Run examples
 dotnet run --project BasicMessaging
@@ -900,7 +900,7 @@ dotnet run --project MultiTenantApp
 
 ### Integration with NATS Clients
 
-Use MessageBroker.NET server with standard NATS clients:
+Use DotGnatly server with standard NATS clients:
 
 ```csharp
 // Start embedded server
@@ -986,7 +986,7 @@ server.Start(config);
 
 You've learned how to:
 
-1. Install and verify MessageBroker.NET
+1. Install and verify DotGnatly
 2. Start a basic NATS server
 3. Configure JetStream, authentication, and monitoring
 4. Implement hot configuration reload
@@ -994,4 +994,4 @@ You've learned how to:
 6. Troubleshoot common issues
 7. Follow best practices for production
 
-Start building with MessageBroker.NET today!
+Start building with DotGnatly today!

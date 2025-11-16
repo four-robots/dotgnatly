@@ -1,6 +1,6 @@
-# MessageBroker.NET Documentation - Table of Contents
+# DotGnatly Documentation - Table of Contents
 
-Complete documentation for MessageBroker.NET v1.0.0
+Complete documentation for DotGnatly v1.0.0
 
 **Total**: 7 files | 5,312 lines | 192 KB
 
@@ -34,7 +34,7 @@ Complete documentation for MessageBroker.NET v1.0.0
 - Documentation Overview
 - Quick Links
 - Key Features
-- Why MessageBroker.NET?
+- Why DotGnatly?
 - 30-Second Quick Start
 - Common Use Cases
 - Platform Support
@@ -81,7 +81,7 @@ Complete documentation for MessageBroker.NET v1.0.0
   - Complete Production Example
 - Comparison with nats-csharp
   - Standard nats-csharp
-  - MessageBroker.NET
+  - DotGnatly
   - Side-by-Side Feature Comparison
   - Usage Scenario Comparison
 - Complete API Reference
@@ -132,7 +132,7 @@ Complete documentation for MessageBroker.NET v1.0.0
   - Pattern 2: Sidecar Deployment
   - Pattern 3: Hub-and-Spoke (Leaf Nodes)
 - Comparison Diagrams
-  - nats-csharp vs MessageBroker.NET
+  - nats-csharp vs DotGnatly
   - Side-by-Side Feature Comparison
 - Data Flow Diagrams
   - Publish/Subscribe Flow
@@ -222,12 +222,12 @@ To print or export documentation:
 # Combine all documentation into single file
 cat INDEX.md README.md GETTING_STARTED.md API_DESIGN.md \
     ARCHITECTURE.md DIAGRAMS.md QUICK_REFERENCE.md > \
-    MessageBroker.NET-Complete-Documentation.md
+    DotGnatly-Complete-Documentation.md
 
 # Or convert to PDF (requires pandoc)
 pandoc INDEX.md README.md GETTING_STARTED.md API_DESIGN.md \
        ARCHITECTURE.md DIAGRAMS.md QUICK_REFERENCE.md \
-       -o MessageBroker.NET-Documentation.pdf
+       -o DotGnatly-Documentation.pdf
 ```
 
 ---

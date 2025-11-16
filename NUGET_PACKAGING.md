@@ -1,13 +1,13 @@
-# NuGet Packaging Guide for MessageBroker.NET
+# NuGet Packaging Guide for DotGnatly
 
-This document explains the NuGet packaging setup for MessageBroker.NET and how to create, verify, and publish packages.
+This document explains the NuGet packaging setup for DotGnatly and how to create, verify, and publish packages.
 
 ## Overview
 
-MessageBroker.NET is packaged as two NuGet packages:
+DotGnatly is packaged as two NuGet packages:
 
-1. **MessageBroker.Core** - Core abstractions and models (no dependencies)
-2. **MessageBroker.Nats** - NATS implementation with native bindings (depends on MessageBroker.Core)
+1. **DotGnatly.Core** - Core abstractions and models (no dependencies)
+2. **DotGnatly.Nats** - NATS implementation with native bindings (depends on DotGnatly.Core)
 
 ## Multi-Targeting Support
 
@@ -20,29 +20,29 @@ This ensures maximum compatibility across different .NET versions.
 
 ## Package Structure
 
-### MessageBroker.Core
+### DotGnatly.Core
 ```
-MessageBroker.Core.1.0.0.nupkg
+DotGnatly.Core.1.0.0.nupkg
 ├── lib/
 │   ├── net8.0/
-│   │   └── MessageBroker.Core.dll
+│   │   └── DotGnatly.Core.dll
 │   ├── net9.0/
-│   │   └── MessageBroker.Core.dll
+│   │   └── DotGnatly.Core.dll
 │   └── net10.0/
-│       └── MessageBroker.Core.dll
+│       └── DotGnatly.Core.dll
 └── README.md
 ```
 
-### MessageBroker.Nats
+### DotGnatly.Nats
 ```
-MessageBroker.Nats.1.0.0.nupkg
+DotGnatly.Nats.1.0.0.nupkg
 ├── lib/
 │   ├── net8.0/
-│   │   └── MessageBroker.Nats.dll
+│   │   └── DotGnatly.Nats.dll
 │   ├── net9.0/
-│   │   └── MessageBroker.Nats.dll
+│   │   └── DotGnatly.Nats.dll
 │   └── net10.0/
-│       └── MessageBroker.Nats.dll
+│       └── DotGnatly.Nats.dll
 ├── runtimes/
 │   ├── win-x64/
 │   │   └── native/
@@ -64,7 +64,7 @@ NuGet automatically deploys the correct native library based on the target runti
 
 ### How It Works
 
-When you reference `MessageBroker.Nats` in your project, NuGet will:
+When you reference `DotGnatly.Nats` in your project, NuGet will:
 
 1. Copy the appropriate assembly from `lib/netX.0/` based on your target framework
 2. Copy the appropriate native binary from `runtimes/{rid}/native/` based on your runtime (Windows/Linux)
@@ -83,7 +83,7 @@ cd native
 ./build.sh
 ```
 
-This creates `nats-bindings.so` which is then copied to `src/MessageBroker.Nats/`
+This creates `nats-bindings.so` which is then copied to `src/DotGnatly.Nats/`
 
 ### Windows (requires Go 1.21+, TDM-GCC or MinGW-w64)
 
@@ -92,7 +92,7 @@ cd native
 .\build.ps1
 ```
 
-This creates `nats-bindings.dll` which is then copied to `src/MessageBroker.Nats/`
+This creates `nats-bindings.dll` which is then copied to `src/DotGnatly.Nats/`
 
 ### Cross-Platform Build
 
@@ -134,17 +134,17 @@ If you prefer to do it manually:
 # 1. Build native bindings
 cd native && ./build.sh && cd ..
 
-# 2. Copy bindings to MessageBroker.Nats
-cp native/nats-bindings.dll src/MessageBroker.Nats/  # Windows
-cp native/nats-bindings.so src/MessageBroker.Nats/   # Linux
+# 2. Copy bindings to DotGnatly.Nats
+cp native/nats-bindings.dll src/DotGnatly.Nats/  # Windows
+cp native/nats-bindings.so src/DotGnatly.Nats/   # Linux
 
 # 3. Build solution
-dotnet build MessageBroker.NET.sln -c Release
+dotnet build DotGnatly.sln -c Release
 
 # 4. Create packages
 mkdir -p nupkg
-dotnet pack src/MessageBroker.Core/MessageBroker.Core.csproj -c Release -o ./nupkg
-dotnet pack src/MessageBroker.Nats/MessageBroker.Nats.csproj -c Release -o ./nupkg
+dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release -o ./nupkg
+dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release -o ./nupkg
 ```
 
 ## Verifying Package Contents
@@ -153,7 +153,7 @@ After creating packages, verify they contain the correct files:
 
 ```bash
 # Extract package contents
-unzip -l nupkg/MessageBroker.Nats.1.0.0.nupkg
+unzip -l nupkg/DotGnatly.Nats.1.0.0.nupkg
 
 # Or use NuGet Package Explorer (Windows GUI tool)
 # Download from: https://github.com/NuGetPackageExplorer/NuGetPackageExplorer
@@ -177,7 +177,7 @@ mkdir test-package && cd test-package
 dotnet new console
 
 # Add package from local source
-dotnet add package MessageBroker.Nats --version 1.0.0 --source ../nupkg
+dotnet add package DotGnatly.Nats --version 1.0.0 --source ../nupkg
 
 # Verify native bindings are copied
 dotnet build
@@ -187,8 +187,8 @@ ls bin/Debug/net9.0/  # Should see nats-bindings.dll or .so
 **Test code:**
 
 ```csharp
-using MessageBroker.Nats;
-using MessageBroker.Core.Configuration;
+using DotGnatly.Nats;
+using DotGnatly.Core.Configuration;
 
 using var controller = new NatsController();
 var config = new BrokerConfiguration { Port = 4222 };
@@ -213,23 +213,23 @@ if (result.Success)
 
 ```bash
 # Set API key (one-time setup)
-dotnet nuget push nupkg/MessageBroker.Core.1.0.0.nupkg \
+dotnet nuget push nupkg/DotGnatly.Core.1.0.0.nupkg \
   --api-key YOUR_API_KEY \
   --source https://api.nuget.org/v3/index.json
 
-dotnet nuget push nupkg/MessageBroker.Nats.1.0.0.nupkg \
+dotnet nuget push nupkg/DotGnatly.Nats.1.0.0.nupkg \
   --api-key YOUR_API_KEY \
   --source https://api.nuget.org/v3/index.json
 ```
 
-**Important:** Publish `MessageBroker.Core` first, then `MessageBroker.Nats` (due to dependency).
+**Important:** Publish `DotGnatly.Core` first, then `DotGnatly.Nats` (due to dependency).
 
 ### Publishing Symbols
 
 Symbol packages (`.snupkg`) are automatically created and should be published alongside main packages:
 
 ```bash
-dotnet nuget push nupkg/MessageBroker.Core.1.0.0.snupkg \
+dotnet nuget push nupkg/DotGnatly.Core.1.0.0.snupkg \
   --api-key YOUR_API_KEY \
   --source https://api.nuget.org/v3/index.json
 ```
@@ -267,11 +267,11 @@ Shared metadata is in `src/Directory.Build.props`:
 
 ```xml
 <PropertyGroup>
-  <Authors>MessageBroker.NET Contributors</Authors>
-  <Company>MessageBroker.NET</Company>
-  <Copyright>Copyright (c) 2024 MessageBroker.NET Contributors</Copyright>
-  <PackageProjectUrl>https://github.com/four-robots/messagebroker.net</PackageProjectUrl>
-  <RepositoryUrl>https://github.com/four-robots/messagebroker.net</RepositoryUrl>
+  <Authors>DotGnatly Contributors</Authors>
+  <Company>DotGnatly</Company>
+  <Copyright>Copyright (c) 2024 DotGnatly Contributors</Copyright>
+  <PackageProjectUrl>https://github.com/four-robots/dotgnatly</PackageProjectUrl>
+  <RepositoryUrl>https://github.com/four-robots/dotgnatly</RepositoryUrl>
   <PackageLicenseExpression>MIT</PackageLicenseExpression>
 </PropertyGroup>
 ```
@@ -315,12 +315,12 @@ jobs:
         ./build-all.sh
 
     - name: Build solution
-      run: dotnet build MessageBroker.NET.sln -c Release
+      run: dotnet build DotGnatly.sln -c Release
 
     - name: Create packages
       run: |
-        dotnet pack src/MessageBroker.Core/MessageBroker.Core.csproj -c Release -o ./nupkg
-        dotnet pack src/MessageBroker.Nats/MessageBroker.Nats.csproj -c Release -o ./nupkg
+        dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release -o ./nupkg
+        dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release -o ./nupkg
 
     - name: Publish to NuGet
       run: |
@@ -336,7 +336,7 @@ jobs:
 **Symptom:** `DllNotFoundException: Unable to load DLL 'nats-bindings'`
 
 **Solutions:**
-1. Verify package includes native bindings: `unzip -l nupkg/MessageBroker.Nats.1.0.0.nupkg | grep native`
+1. Verify package includes native bindings: `unzip -l nupkg/DotGnatly.Nats.1.0.0.nupkg | grep native`
 2. Check output directory after build: `ls bin/Debug/net9.0/` should show `nats-bindings.dll` or `.so`
 3. Ensure you're targeting a specific RID: `dotnet publish -r win-x64` or `dotnet publish -r linux-x64`
 
@@ -356,7 +356,7 @@ jobs:
 **Solutions:**
 1. Check `.csproj` has `<TargetFrameworks>` (plural) not `<TargetFramework>` (singular)
 2. Clean and rebuild: `dotnet clean && dotnet build`
-3. Verify with: `unzip -l nupkg/MessageBroker.Core.1.0.0.nupkg | grep "lib/"`
+3. Verify with: `unzip -l nupkg/DotGnatly.Core.1.0.0.nupkg | grep "lib/"`
 
 ## Additional Resources
 
@@ -364,7 +364,7 @@ jobs:
 - [.NET Multi-Targeting](https://docs.microsoft.com/dotnet/standard/frameworks)
 - [Runtime Identifier (RID) Catalog](https://docs.microsoft.com/dotnet/core/rid-catalog)
 - [NuGet Package Explorer](https://github.com/NuGetPackageExplorer/NuGetPackageExplorer)
-- [MessageBroker.NET Documentation](./docs/INDEX.md)
+- [DotGnatly Documentation](./docs/INDEX.md)
 
 ## Support
 

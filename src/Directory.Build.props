@@ -2,9 +2,9 @@
   <PropertyGroup>
     <!-- Shared Package Properties -->
     <Version>1.0.0</Version>
-    <Authors>MessageBroker.NET Contributors</Authors>
-    <Company>MessageBroker.NET</Company>
-    <Copyright>Copyright (c) 2024 MessageBroker.NET Contributors</Copyright>
+    <Authors>DotGnatly Contributors</Authors>
+    <Company>DotGnatly</Company>
+    <Copyright>Copyright (c) 2024 DotGnatly Contributors</Copyright>
     <PackageProjectUrl>https://github.com/four-robots/messagebroker.net</PackageProjectUrl>
     <RepositoryUrl>https://github.com/four-robots/messagebroker.net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
