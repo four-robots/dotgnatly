@@ -8,7 +8,12 @@
 	<ItemGroup>
 		<ProjectReference Include="..\DotGnatly.Core\DotGnatly.Core.csproj" />
 		<ProjectReference Include="..\DotGnatly.Nats\DotGnatly.Nats.csproj" />
-		<ProjectReference Include="..\DotGnatly.Extensions.JetStream\DotGnatly.Extensions.JetStream.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Exclude JetStream extension examples (requires DotGnatly.Extensions.JetStream which is disabled) -->
+		<Compile Remove="JetStream\**" />
+		<Compile Remove="KeyValue\**" />
 	</ItemGroup>
 
 </Project>
