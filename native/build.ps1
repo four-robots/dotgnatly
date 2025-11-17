@@ -2,6 +2,8 @@
 
 $ErrorActionPreference = "Stop"
 
+$env:CGO_ENABLED = "1"
+
 Write-Host "Building NATS bindings for Windows..." -ForegroundColor Green
 
 # Get the directory of this script

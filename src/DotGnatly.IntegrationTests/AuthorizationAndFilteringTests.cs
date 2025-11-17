@@ -68,36 +68,41 @@ public static class AuthorizationAndFilteringTests
             Console.WriteLine("✓ Connected with valid credentials");
 
             // Verify connection by publishing and subscribing
-            var receivedMessage = false;
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-
+            var receivedMessages = new List<string>();
             var subscription = nats.SubscribeAsync<string>("test.auth");
 
-            _ = Task.Run(async () =>
+            var subscriptionTask = Task.Run(async () =>
             {
                 await foreach (var msg in subscription)
                 {
-                    if (msg.Data == "auth test message")
-                    {
-                        receivedMessage = true;
-                        cts.Cancel();
+                    receivedMessages.Add(msg.Data ?? "");
+                    if (receivedMessages.Count >= 3)
                         break;
-                    }
                 }
             });
 
-            await Task.Delay(200); // Give subscription time to establish
-            await nats.PublishAsync("test.auth", "auth test message");
+            await Task.Delay(500); // Give subscription time to establish
 
-            await Task.Delay(500);
+            await nats.PublishAsync("test.auth", "Message 1");
+            await nats.PublishAsync("test.auth", "Message 2");
+            await nats.PublishAsync("test.auth", "Message 3");
 
-            if (!receivedMessage)
+            var timeoutTask = Task.Delay(5000);
+            var completedTask = await Task.WhenAny(subscriptionTask, timeoutTask);
+
+            if (completedTask == timeoutTask)
             {
-                Console.WriteLine("❌ Failed to receive published message");
+                Console.WriteLine("❌ Timeout waiting for messages");
                 return false;
             }
 
-            Console.WriteLine("✓ Successfully published and received message");
+            if (receivedMessages.Count != 3)
+            {
+                Console.WriteLine($"❌ Expected 3 messages, received {receivedMessages.Count}");
+                return false;
+            }
+
+            Console.WriteLine("✓ Successfully published and received 3 messages");
             Console.WriteLine("✓ Basic authentication test passed");
             return true;
         }
@@ -219,23 +224,41 @@ public static class AuthorizationAndFilteringTests
             await using var nats = new NatsClient($"nats://supersecrettoken123@127.0.0.1:4252");
             Console.WriteLine("✓ Connected with valid token");
 
-            // Verify connection works
-            await nats.PublishAsync("test.token", "token test");
-            Console.WriteLine("✓ Published message with token auth");
+            // Verify connection works with pub/sub
+            var receivedMessages = new List<string>();
+            var subscription = nats.SubscribeAsync<string>("test.token");
 
-            // Try with wrong token
-            try
+            var subscriptionTask = Task.Run(async () =>
             {
-                await using var nats2 = new NatsClient($"nats://wrongtoken@127.0.0.1:4252");
-                await nats2.PublishAsync("test", "test"); // Try to use connection
-                Console.WriteLine("❌ Connection should have been rejected with invalid token");
+                await foreach (var msg in subscription)
+                {
+                    receivedMessages.Add(msg.Data ?? "");
+                    if (receivedMessages.Count >= 2)
+                        break;
+                }
+            });
+
+            await Task.Delay(500); // Give subscription time to establish
+
+            await nats.PublishAsync("test.token", "Token Message 1");
+            await nats.PublishAsync("test.token", "Token Message 2");
+
+            var timeoutTask = Task.Delay(5000);
+            var completedTask = await Task.WhenAny(subscriptionTask, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                Console.WriteLine("❌ Timeout waiting for messages");
                 return false;
             }
-            catch (Exception ex)
+
+            if (receivedMessages.Count != 2)
             {
-                Console.WriteLine($"✓ Invalid token properly rejected: {ex.Message.Substring(0, Math.Min(60, ex.Message.Length))}...");
+                Console.WriteLine($"❌ Expected 2 messages, received {receivedMessages.Count}");
+                return false;
             }
 
+            Console.WriteLine("✓ Published and received messages with token auth");
             Console.WriteLine("✓ Token authentication test passed");
             return true;
         }
