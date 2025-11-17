@@ -209,7 +209,19 @@ public class NatsConfigParser
             }
             else if (TryParseBlockStart(line, out var blockName))
             {
-                var blockContent = ExtractBlock(context);
+                string blockContent;
+
+                // Check if this is an inline block (all on one line)
+                if (IsInlineBlock(line))
+                {
+                    blockContent = ExtractInlineBlockContent(line);
+                    context.MoveNext();
+                }
+                else
+                {
+                    blockContent = ExtractBlock(context);
+                }
+
                 switch (blockName.ToLowerInvariant())
                 {
                     case "tls":
@@ -279,14 +291,34 @@ public class NatsConfigParser
     {
         blockName = string.Empty;
 
-        // Check if line ends with opening brace
-        if (line.TrimEnd().EndsWith("{"))
+        // Check if line has an opening brace (could be inline block or multi-line block)
+        var openBraceIndex = line.IndexOf('{');
+        if (openBraceIndex >= 0)
         {
-            blockName = line.Substring(0, line.LastIndexOf('{')).Trim();
+            blockName = line.Substring(0, openBraceIndex).Trim();
             return !string.IsNullOrWhiteSpace(blockName);
         }
 
         return false;
+    }
+
+    private static bool IsInlineBlock(string line)
+    {
+        var trimmed = line.Trim();
+        return trimmed.Contains('{') && trimmed.TrimEnd().EndsWith("}");
+    }
+
+    private static string ExtractInlineBlockContent(string line)
+    {
+        var openBraceIndex = line.IndexOf('{');
+        var closeBraceIndex = line.LastIndexOf('}');
+
+        if (openBraceIndex >= 0 && closeBraceIndex > openBraceIndex)
+        {
+            return line.Substring(openBraceIndex + 1, closeBraceIndex - openBraceIndex - 1);
+        }
+
+        return string.Empty;
     }
 
     private static string ExtractBlock(ParseContext context)
@@ -720,48 +752,85 @@ public class NatsConfigParser
     private static AuthorizationConfiguration ParseAuthorizationBlock(string content)
     {
         var auth = new AuthorizationConfiguration();
-        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var context = new ParseContext(lines);
 
-        while (context.HasMore())
+        // Check if content is inline (comma-separated) or multi-line
+        var isInline = content.Contains(',') && !content.Contains('\n');
+
+        if (isInline)
         {
-            var line = context.CurrentLine.Trim();
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            // Parse comma-separated inline content
+            var pairs = content.Split(',');
+            foreach (var pair in pairs)
             {
-                context.MoveNext();
-                continue;
-            }
-
-            if (TryParseKeyValue(line, out var key, out var value))
-            {
-                switch (key.ToLowerInvariant())
+                if (TryParseKeyValue(pair, out var key, out var value))
                 {
-                    case "timeout":
-                        auth.Timeout = ParseInt(value);
-                        break;
-                    case "user":
-                        auth.User = UnquoteString(value);
-                        break;
-                    case "password":
-                        auth.Password = UnquoteString(value);
-                        break;
-                    case "account":
-                        auth.Account = UnquoteString(value);
-                        break;
-                    case "token":
-                        auth.Token = UnquoteString(value);
-                        break;
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "timeout":
+                            auth.Timeout = ParseInt(value);
+                            break;
+                        case "user":
+                            auth.User = UnquoteString(value);
+                            break;
+                        case "password":
+                            auth.Password = UnquoteString(value);
+                            break;
+                        case "account":
+                            auth.Account = UnquoteString(value);
+                            break;
+                        case "token":
+                            auth.Token = UnquoteString(value);
+                            break;
+                    }
                 }
-                context.MoveNext();
             }
-            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "users")
+        }
+        else
+        {
+            // Parse multi-line content
+            var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var context = new ParseContext(lines);
+
+            while (context.HasMore())
             {
-                var blockContent = ExtractBlock(context);
-                auth.Users = ParseUsersArray(blockContent);
-            }
-            else
-            {
-                context.MoveNext();
+                var line = context.CurrentLine.Trim();
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                {
+                    context.MoveNext();
+                    continue;
+                }
+
+                if (TryParseKeyValue(line, out var key, out var value))
+                {
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "timeout":
+                            auth.Timeout = ParseInt(value);
+                            break;
+                        case "user":
+                            auth.User = UnquoteString(value);
+                            break;
+                        case "password":
+                            auth.Password = UnquoteString(value);
+                            break;
+                        case "account":
+                            auth.Account = UnquoteString(value);
+                            break;
+                        case "token":
+                            auth.Token = UnquoteString(value);
+                            break;
+                    }
+                    context.MoveNext();
+                }
+                else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "users")
+                {
+                    var blockContent = ExtractBlock(context);
+                    auth.Users = ParseUsersArray(blockContent);
+                }
+                else
+                {
+                    context.MoveNext();
+                }
             }
         }
 
