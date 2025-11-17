@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+
+    <!-- NuGet Package Properties -->
+    <Description>JetStream extension for DotGnatly - provides fluent API for managing NATS JetStream streams, consumers, and key-value stores using the official NATS.Net client library. Extends NatsController with client-side JetStream operations.</Description>
+    <PackageTags>nats;jetstream;streams;messaging;pubsub;nats-client;fluent-api</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotGnatly.Core\DotGnatly.Core.csproj" />
+    <ProjectReference Include="..\DotGnatly.Nats\DotGnatly.Nats.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NATS.Net" Version="2.5.2" />
+  </ItemGroup>
+
+</Project>

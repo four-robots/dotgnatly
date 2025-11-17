@@ -8,6 +8,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\DotGnatly.Core\DotGnatly.Core.csproj" />
 		<ProjectReference Include="..\DotGnatly.Nats\DotGnatly.Nats.csproj" />
+		<ProjectReference Include="..\DotGnatly.JetStream\DotGnatly.JetStream.csproj" />
 	</ItemGroup>
 
 </Project>
