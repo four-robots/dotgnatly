@@ -4,7 +4,7 @@ using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 
-namespace DotGnatly.JetStream.Extensions;
+namespace DotGnatly.Extensions.JetStream.Extensions;
 
 /// <summary>
 /// Provides JetStream extension methods for NatsController to enable fluent stream management.

@@ -1,5 +1,5 @@
 using DotGnatly.Core.Configuration;
-using DotGnatly.JetStream.Extensions;
+using DotGnatly.Extensions.JetStream.Extensions;
 using DotGnatly.Nats.Implementation;
 using NATS.Client.JetStream.Models;
 

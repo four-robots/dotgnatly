@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NATS.Client.JetStream.Models;
 
-namespace DotGnatly.JetStream.Models;
+namespace DotGnatly.Extensions.JetStream.Models;
 
 /// <summary>
 /// JSON model for deserializing NATS JetStream stream configuration files.

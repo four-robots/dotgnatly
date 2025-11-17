@@ -1,7 +1,7 @@
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 
-namespace DotGnatly.JetStream.Models;
+namespace DotGnatly.Extensions.JetStream.Models;
 
 /// <summary>
 /// Encapsulates a NATS connection and JetStream context for managing streams and consumers.

@@ -1,6 +1,6 @@
 using NATS.Client.JetStream.Models;
 
-namespace DotGnatly.JetStream.Models;
+namespace DotGnatly.Extensions.JetStream.Models;
 
 /// <summary>
 /// Fluent builder for creating JetStream StreamConfig instances.

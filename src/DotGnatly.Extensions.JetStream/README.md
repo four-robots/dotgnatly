@@ -1,4 +1,4 @@
-# DotGnatly.JetStream
+# DotGnatly.Extensions.JetStream
 
 Fluent extension methods for managing NATS JetStream streams, consumers, and key-value stores using the official NATS.Net client library.
 
@@ -8,12 +8,12 @@ This package extends `NatsController` with client-side JetStream operations, pro
 
 **Key Distinction:**
 - **DotGnatly.Nats** - Server-side control (configures JetStream settings, storage limits, etc.)
-- **DotGnatly.JetStream** - Client-side operations (creates/manages streams, consumers, etc.)
+- **DotGnatly.Extensions.JetStream** - Client-side operations (creates/manages streams, consumers, etc.)
 
 ## Installation
 
 ```bash
-dotnet add package DotGnatly.JetStream
+dotnet add package DotGnatly.Extensions.JetStream
 ```
 
 This package depends on:
@@ -25,7 +25,7 @@ This package depends on:
 
 ```csharp
 using DotGnatly.Core.Configuration;
-using DotGnatly.JetStream.Extensions;
+using DotGnatly.Extensions.JetStream.Extensions;
 using DotGnatly.Nats.Implementation;
 using NATS.Client.JetStream.Models;
 
@@ -112,7 +112,7 @@ Console.WriteLine($"Purged {response.Purged} messages");
 
 ### Loading Streams from JSON Configuration
 
-DotGnatly.JetStream supports loading stream configurations from JSON files, making it easy to manage stream definitions as infrastructure-as-code.
+DotGnatly.Extensions.JetStream supports loading stream configurations from JSON files, making it easy to manage stream definitions as infrastructure-as-code.
 
 **From JSON String:**
 ```csharp
@@ -292,7 +292,7 @@ See the [StreamManagementExample.cs](../../DotGnatly.Examples/JetStream/StreamMa
 
 ```
 ┌─────────────────────────────────────┐
-│   DotGnatly.JetStream Extensions    │
+│   DotGnatly.Extensions.JetStream Extensions    │
 │  (Stream Management - Client Side)  │
 └──────────────┬──────────────────────┘
                │
@@ -319,7 +319,7 @@ See the [StreamManagementExample.cs](../../DotGnatly.Examples/JetStream/StreamMa
 
 The JetStream extension is a separate package because:
 
-1. **Separation of Concerns** - Server control (DotGnatly.Nats) vs. client operations (DotGnatly.JetStream)
+1. **Separation of Concerns** - Server control (DotGnatly.Nats) vs. client operations (DotGnatly.Extensions.JetStream)
 2. **Optional Dependency** - Not all users need stream management capabilities
 3. **Clean Dependencies** - Avoids forcing NATS.Net client dependency on server-only users
 4. **Independent Versioning** - Client and server packages can evolve independently
@@ -327,7 +327,7 @@ The JetStream extension is a separate package because:
 ## NuGet Package
 
 ```xml
-<PackageReference Include="DotGnatly.JetStream" Version="1.0.0" />
+<PackageReference Include="DotGnatly.Extensions.JetStream" Version="1.0.0" />
 ```
 
 This will automatically bring in:

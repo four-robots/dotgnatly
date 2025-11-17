@@ -1,6 +1,6 @@
 using DotGnatly.Core.Configuration;
-using DotGnatly.JetStream.Extensions;
-using DotGnatly.JetStream.Models;
+using DotGnatly.Extensions.JetStream.Extensions;
+using DotGnatly.Extensions.JetStream.Models;
 using DotGnatly.Nats.Implementation;
 
 namespace DotGnatly.Examples.JetStream;
