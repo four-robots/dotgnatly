@@ -831,7 +831,320 @@ Console.WriteLine($"Connections: {info.Connections}");
 Console.WriteLine($"Version: {info.Version}");
 ```
 
+---
+
+```csharp
+public Task<string> GetVarzAsync(CancellationToken cancellationToken = default)
+```
+Gets full server variables and statistics including CPU, memory, connections, and JetStream configuration.
+
+**Returns:** JSON string with comprehensive server statistics
+
+**Example:**
+```csharp
+var varz = await controller.GetVarzAsync();
+var data = JsonSerializer.Deserialize<VarzResponse>(varz);
+Console.WriteLine($"Server ID: {data.server_id}");
+Console.WriteLine($"Memory: {data.mem} bytes");
+```
+
+---
+
+```csharp
+public Task<string> GetConnzAsync(string? subscriptionsFilter = null, CancellationToken cancellationToken = default)
+```
+Gets active connection information with optional subscription filtering.
+
+**Parameters:**
+- `subscriptionsFilter`: Optional subject pattern to filter connections by subscriptions
+
+**Returns:** JSON string with connection details (client IDs, IPs, bytes in/out, uptime)
+
+**Example:**
+```csharp
+var connz = await controller.GetConnzAsync();
+var filtered = await controller.GetConnzAsync(subscriptionsFilter: "orders.*");
+```
+
+---
+
+```csharp
+public Task<string> GetSubszAsync(string? subscriptionsFilter = null, CancellationToken cancellationToken = default)
+```
+Gets detailed subscription information across all connections.
+
+**Parameters:**
+- `subscriptionsFilter`: Optional subject pattern to filter subscriptions
+
+**Returns:** JSON string with subscription counts and details by subject
+
+**Example:**
+```csharp
+var subsz = await controller.GetSubszAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetJszAsync(string? accountName = null, CancellationToken cancellationToken = default)
+```
+Gets JetStream statistics including streams, consumers, and storage usage.
+
+**Parameters:**
+- `accountName`: Optional account name to filter JetStream info
+
+**Returns:** JSON string with JetStream configuration and statistics
+
+**Example:**
+```csharp
+var jsz = await controller.GetJszAsync();
+var accountJsz = await controller.GetJszAsync(accountName: "tenant1");
+```
+
+---
+
+```csharp
+public Task<string> GetRoutezAsync(CancellationToken cancellationToken = default)
+```
+Gets cluster routing information showing connections between servers.
+
+**Returns:** JSON string with route details and subscription counts
+
+**Example:**
+```csharp
+var routez = await controller.GetRoutezAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetLeafzAsync(CancellationToken cancellationToken = default)
+```
+Gets leaf node connection information for hub-and-spoke topologies.
+
+**Returns:** JSON string with leaf node connection details
+
+**Example:**
+```csharp
+var leafz = await controller.GetLeafzAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetAccountzAsync(CancellationToken cancellationToken = default)
+```
+Gets account-level monitoring information for multi-tenant deployments.
+
+**Returns:** JSON string with account list, connection counts, and subscription counts per account
+
+**Example:**
+```csharp
+var accountz = await controller.GetAccountzAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetAccountStatzAsync(CancellationToken cancellationToken = default)
+```
+Gets detailed per-account usage statistics including message and byte counts.
+
+**Returns:** JSON string with account statistics (sent/received messages/bytes, slow consumers)
+
+**Example:**
+```csharp
+var accountStatz = await controller.GetAccountStatzAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetGatewayzAsync(CancellationToken cancellationToken = default)
+```
+Gets gateway connection statistics for super-cluster deployments.
+
+**Returns:** JSON string with gateway connections and traffic statistics
+
+**Example:**
+```csharp
+var gatewayz = await controller.GetGatewayzAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetRaftzAsync(string? accountFilter = null, string? groupFilter = null, CancellationToken cancellationToken = default)
+```
+Gets Raft consensus state for JetStream clustering.
+
+**Parameters:**
+- `accountFilter`: Optional account name to filter Raft groups
+- `groupFilter`: Optional group name to filter Raft groups
+
+**Returns:** JSON string with Raft leader/follower status and cluster health
+
+**Example:**
+```csharp
+var raftz = await controller.GetRaftzAsync();
+```
+
+#### Connection Management Methods
+
+```csharp
+public Task DisconnectClientAsync(ulong clientId, CancellationToken cancellationToken = default)
+```
+Forcefully disconnects a specific client by connection ID.
+
+**Parameters:**
+- `clientId`: Client connection ID (from GetConnzAsync)
+
+**Example:**
+```csharp
+await controller.DisconnectClientAsync(12345);
+```
+
+---
+
+```csharp
+public Task<string> GetClientInfoAsync(ulong clientId, CancellationToken cancellationToken = default)
+```
+Gets detailed information about a specific client connection.
+
+**Parameters:**
+- `clientId`: Client connection ID
+
+**Returns:** JSON string with client details
+
+**Example:**
+```csharp
+var clientInfo = await controller.GetClientInfoAsync(12345);
+```
+
+#### Server Health & Status Methods
+
+```csharp
+public Task<bool> WaitForReadyAsync(int timeoutSeconds = 5, CancellationToken cancellationToken = default)
+```
+Waits for server to be ready to accept connections.
+
+**Parameters:**
+- `timeoutSeconds`: Maximum time to wait (default: 5 seconds)
+
+**Returns:** True if server is ready, false if timeout
+
+**Example:**
+```csharp
+bool ready = await controller.WaitForReadyAsync(timeoutSeconds: 10);
+if (!ready) throw new Exception("Server not ready");
+```
+
+---
+
+```csharp
+public Task<bool> IsServerRunningAsync(CancellationToken cancellationToken = default)
+```
+Checks if the server is currently running.
+
+**Returns:** True if running, false otherwise
+
+**Example:**
+```csharp
+bool running = await controller.IsServerRunningAsync();
+```
+
+---
+
+```csharp
+public Task<bool> IsJetStreamEnabledAsync(CancellationToken cancellationToken = default)
+```
+Checks if JetStream is enabled at the server level.
+
+**Returns:** True if JetStream is enabled, false otherwise
+
+**Example:**
+```csharp
+bool jsEnabled = await controller.IsJetStreamEnabledAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetServerIdAsync(CancellationToken cancellationToken = default)
+```
+Gets the server's unique identifier (UUID format).
+
+**Returns:** Server ID string
+
+**Example:**
+```csharp
+string serverId = await controller.GetServerIdAsync();
+```
+
+---
+
+```csharp
+public Task<string> GetServerNameAsync(CancellationToken cancellationToken = default)
+```
+Gets the server's configured name.
+
+**Returns:** Server name (empty string if not configured)
+
+**Example:**
+```csharp
+string serverName = await controller.GetServerNameAsync();
+```
+
 #### Account Management Methods
+
+```csharp
+public Task<string> RegisterAccountAsync(string accountName, CancellationToken cancellationToken = default)
+```
+Registers a new account at runtime without server restart.
+
+**Parameters:**
+- `accountName`: Name of the account to create
+
+**Returns:** JSON string with account information
+
+**Example:**
+```csharp
+var accountInfo = await controller.RegisterAccountAsync("tenant1");
+```
+
+---
+
+```csharp
+public Task<string> LookupAccountAsync(string accountName, CancellationToken cancellationToken = default)
+```
+Retrieves detailed information about an existing account.
+
+**Parameters:**
+- `accountName`: Name of the account to lookup
+
+**Returns:** JSON string with account details (limits, stats, subscriptions)
+
+**Example:**
+```csharp
+var account = await controller.LookupAccountAsync("tenant1");
+```
+
+---
+
+```csharp
+public Task SetSystemAccountAsync(string accountName, CancellationToken cancellationToken = default)
+```
+Designates a special system account for server events and monitoring.
+
+**Parameters:**
+- `accountName`: Name of the account to designate as system account
+
+**Example:**
+```csharp
+await controller.SetSystemAccountAsync("SYS");
+```
+
+---
 
 ```csharp
 public AccountInfo CreateAccount(AccountConfig config)

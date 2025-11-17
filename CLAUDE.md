@@ -284,6 +284,23 @@ await controller.RollbackAsync(toVersion: 2);
 - IntelliSense-friendly
 - Extension methods for common operations
 
+### 6. Comprehensive Monitoring & Observability
+- **11 Monitoring Endpoints**: Varz, Connz, Subsz, Jsz, Routez, Leafz, Accountz, Gatewayz, AccountStatz, Raftz, and more
+- **Real-time Metrics**: Connection counts, subscription tracking, memory usage, message rates
+- **JetStream Monitoring**: Stream details, consumer stats, storage usage, account-level metrics
+- **Cluster Monitoring**: Route health, leaf node connections, gateway statistics, Raft consensus state
+- **Connection Management**: Client inspection, forced disconnection, detailed client information
+- **Account Management**: Runtime account registration, account lookups, system account designation
+- **Health Checks**: Server readiness probes, running status, JetStream enabled detection
+- **Server Identity**: Server ID, name, version information
+
+### 7. Runtime Control & Management
+- **Dynamic Account Creation**: Register accounts at runtime without restart
+- **Client Management**: Disconnect misbehaving clients, inspect client details
+- **Health Probes**: Wait for server readiness, check running status
+- **System Account**: Designate special accounts for server events and monitoring
+- **Multi-Server Support**: Manage multiple server instances simultaneously
+
 ## Common Tasks
 
 ### Adding New Configuration Properties
@@ -355,6 +372,95 @@ See **[native/README.md](../native/README.md)** for comprehensive build document
 - Run build script to copy bindings to output directories
 - On Linux, check dependencies: `ldd native/nats-bindings.so`
 
+### Using Monitoring Endpoints
+
+DotGnatly provides comprehensive server monitoring through 11+ endpoints:
+
+**Connection Monitoring:**
+```csharp
+// Get all connections
+var connz = await controller.GetConnzAsync();
+var connections = JsonSerializer.Deserialize<ConnzResponse>(connz);
+
+// Get client details
+var clientInfo = await controller.GetClientInfoAsync(clientId);
+
+// Disconnect a client
+await controller.DisconnectClientAsync(clientId);
+```
+
+**Subscription Monitoring:**
+```csharp
+// Get all subscriptions
+var subsz = await controller.GetSubszAsync();
+
+// Filter by subject
+var filtered = await controller.GetSubszAsync(subscriptionsFilter: "orders.*");
+```
+
+**JetStream Monitoring:**
+```csharp
+// Get JetStream stats
+var jsz = await controller.GetJszAsync();
+
+// Get account-specific JetStream info
+var accountJsz = await controller.GetJszAsync(accountName: "tenant1");
+```
+
+**Server Health & Status:**
+```csharp
+// Wait for server to be ready
+bool ready = await controller.WaitForReadyAsync(timeoutSeconds: 10);
+
+// Check if server is running
+bool running = await controller.IsServerRunningAsync();
+
+// Check if JetStream is enabled
+bool jsEnabled = await controller.IsJetStreamEnabledAsync();
+
+// Get server identity
+string serverId = await controller.GetServerIdAsync();
+string serverName = await controller.GetServerNameAsync();
+```
+
+**Account Management:**
+```csharp
+// Register a new account at runtime
+var accountInfo = await controller.RegisterAccountAsync("tenant1");
+
+// Lookup account details
+var account = await controller.LookupAccountAsync("tenant1");
+
+// Set system account for server events
+await controller.SetSystemAccountAsync("SYS");
+```
+
+**Advanced Monitoring:**
+```csharp
+// Full server variables and statistics
+var varz = await controller.GetVarzAsync();
+
+// Cluster routing information
+var routez = await controller.GetRoutezAsync();
+
+// Leaf node connections
+var leafz = await controller.GetLeafzAsync();
+
+// Account-level monitoring
+var accountz = await controller.GetAccountzAsync();
+
+// Per-account statistics
+var accountStatz = await controller.GetAccountStatzAsync();
+
+// Gateway connections (super-cluster)
+var gatewayz = await controller.GetGatewayzAsync();
+
+// Raft consensus state (JetStream clustering)
+var raftz = await controller.GetRaftzAsync();
+```
+
+See **[docs/MONITORING.md](docs/MONITORING.md)** for comprehensive monitoring documentation.
+
 ## File Locations Reference
 
 ### Configuration Models
@@ -374,6 +480,17 @@ See **[native/README.md](../native/README.md)** for comprehensive build document
 ### Examples
 - `src/DotGnatly.Examples/Program.cs` - Interactive examples
 - `src/DotGnatly.Examples/SimpleTest.cs` - Automated tests
+- `src/DotGnatly.Examples/Monitoring/` - Monitoring examples
+
+### Tests
+- `src/DotGnatly.Nats.Tests/Implementation/NatsControllerMonitoringTests.cs` - 40+ unit tests for monitoring
+- `src/DotGnatly.IntegrationTests/MonitoringTests.cs` - 11 integration tests
+- `native/nats-bindings_test.go` - 30+ Go unit tests for native bindings
+
+### Native Bindings
+- `native/nats-bindings.go` - Go CGO bindings with monitoring endpoints
+- `native/README.md` - Native bindings build documentation
+- `native/README_TESTS.md` - Native bindings test documentation
 
 ## Documentation
 
@@ -381,11 +498,18 @@ Comprehensive documentation is in the `docs/` folder:
 - **GETTING_STARTED.md** (997 lines) - Installation, first steps
 - **API_DESIGN.md** (1,067 lines) - Complete API reference
 - **ARCHITECTURE.md** (930 lines) - Deep dive into system design
+- **MONITORING.md** (500+ lines) - Monitoring and observability guide
 - **DIAGRAMS.md** (631 lines) - Visual architecture diagrams
 - **QUICK_REFERENCE.md** (569 lines) - Cheat sheet
 - **INDEX.md** (514 lines) - Navigation guide
 
-Total: 5,592 lines, 196 KB of documentation
+Additional documentation:
+- **TODO_NATS_FEATURES.md** (470 lines) - Feature roadmap and implementation status
+- **MONITORING_IMPLEMENTATION_SUMMARY.md** - Technical implementation details
+- **IMPLEMENTATION_SUMMARY.md** - Project implementation summary
+- **TEACHER_GUIDE.md** - Educational guide for teaching with DotGnatly
+
+Total: 6,500+ lines of documentation
 
 ## Important Notes for AI Assistants
 
@@ -479,19 +603,37 @@ controller.ConfigurationChanged += (s, e) => { /* react to change */ };
 // Rollback
 await controller.RollbackAsync(toVersion: 2);
 
+// Monitoring
+var connz = await controller.GetConnzAsync();  // Connection stats
+var jsz = await controller.GetJszAsync();      // JetStream stats
+var varz = await controller.GetVarzAsync();    // Server variables
+
+// Health checks
+bool ready = await controller.WaitForReadyAsync();
+bool running = await controller.IsServerRunningAsync();
+
+// Account management
+var account = await controller.RegisterAccountAsync("tenant1");
+var accountInfo = await controller.LookupAccountAsync("tenant1");
+
+// Connection management
+await controller.DisconnectClientAsync(clientId);
+
 // Shutdown
 await controller.ShutdownAsync();
 ```
 
 ## Support Resources
 
-- **Documentation**: `docs/` folder (5,592 lines)
+- **Documentation**: `docs/` folder (6,500+ lines)
 - **Examples**: `src/DotGnatly.Examples/`
 - **Architecture**: `docs/ARCHITECTURE.md`
 - **API Reference**: `docs/API_DESIGN.md`
+- **Monitoring Guide**: `docs/MONITORING.md`
+- **Feature Roadmap**: `TODO_NATS_FEATURES.md`
 - **NATS Community**: https://slack.nats.io
 
 ---
 
-**This file was last updated**: 2025-11-14
-**Project Status**: Active development, all tests passing, ready for use
+**This file was last updated**: 2025-11-16
+**Project Status**: Active development, all tests passing, 29/35 features implemented (83%)
