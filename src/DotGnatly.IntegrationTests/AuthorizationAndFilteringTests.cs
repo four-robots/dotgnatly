@@ -63,40 +63,31 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            // Try to connect with correct credentials
-            var opts = new NatsOpts
-            {
-                Url = "nats://127.0.0.1:4250",
-                AuthOpts = new NatsAuthOpts
-                {
-                    Username = "testuser",
-                    Password = "testpass123"
-                }
-            };
-
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            // Try to connect with correct credentials using connection string format
+            await using var nats = new NatsClient($"nats://testuser:testpass123@127.0.0.1:4250");
             Console.WriteLine("✓ Connected with valid credentials");
 
             // Verify connection by publishing and subscribing
             var receivedMessage = false;
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-            await using var sub = await nats.SubscribeAsync<string>("test.auth", cancellationToken: cts.Token);
+            var subscription = nats.SubscribeAsync<string>("test.auth");
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in subscription)
                 {
                     if (msg.Data == "auth test message")
                     {
                         receivedMessage = true;
                         cts.Cancel();
+                        break;
                     }
                 }
             });
 
-            await nats.PublishAsync("test.auth", "auth test message", cancellationToken: cts.Token);
+            await Task.Delay(200); // Give subscription time to establish
+            await nats.PublishAsync("test.auth", "auth test message");
 
             await Task.Delay(500);
 
@@ -154,21 +145,10 @@ public static class AuthorizationAndFilteringTests
         try
         {
             // Try to connect with wrong password
-            var opts = new NatsOpts
-            {
-                Url = "nats://127.0.0.1:4251",
-                AuthOpts = new NatsAuthOpts
-                {
-                    Username = "validuser",
-                    Password = "wrongpass"
-                },
-                ConnectTimeout = TimeSpan.FromSeconds(2)
-            };
-
             try
             {
-                await using var nats = new NatsConnection(opts);
-                await nats.ConnectAsync();
+                await using var nats = new NatsClient($"nats://validuser:wrongpass@127.0.0.1:4251");
+                await nats.PublishAsync("test", "test"); // Try to use connection
                 Console.WriteLine("❌ Connection should have been rejected with invalid credentials");
                 return false;
             }
@@ -178,16 +158,10 @@ public static class AuthorizationAndFilteringTests
             }
 
             // Try to connect with no credentials
-            var opts2 = new NatsOpts
-            {
-                Url = "nats://127.0.0.1:4251",
-                ConnectTimeout = TimeSpan.FromSeconds(2)
-            };
-
             try
             {
-                await using var nats = new NatsConnection(opts2);
-                await nats.ConnectAsync();
+                await using var nats = new NatsClient($"nats://127.0.0.1:4251");
+                await nats.PublishAsync("test", "test"); // Try to use connection
                 Console.WriteLine("❌ Connection should have been rejected without credentials");
                 return false;
             }
@@ -241,18 +215,8 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            // Try to connect with correct token
-            var opts = new NatsOpts
-            {
-                Url = "nats://127.0.0.1:4252",
-                AuthOpts = new NatsAuthOpts
-                {
-                    Token = "supersecrettoken123"
-                }
-            };
-
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            // Try to connect with correct token using connection string format
+            await using var nats = new NatsClient($"nats://supersecrettoken123@127.0.0.1:4252");
             Console.WriteLine("✓ Connected with valid token");
 
             // Verify connection works
@@ -260,20 +224,10 @@ public static class AuthorizationAndFilteringTests
             Console.WriteLine("✓ Published message with token auth");
 
             // Try with wrong token
-            var opts2 = new NatsOpts
-            {
-                Url = "nats://127.0.0.1:4252",
-                AuthOpts = new NatsAuthOpts
-                {
-                    Token = "wrongtoken"
-                },
-                ConnectTimeout = TimeSpan.FromSeconds(2)
-            };
-
             try
             {
-                await using var nats2 = new NatsConnection(opts2);
-                await nats2.ConnectAsync();
+                await using var nats2 = new NatsClient($"nats://wrongtoken@127.0.0.1:4252");
+                await nats2.PublishAsync("test", "test"); // Try to use connection
                 Console.WriteLine("❌ Connection should have been rejected with invalid token");
                 return false;
             }
@@ -323,24 +277,22 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            var opts = new NatsOpts { Url = "nats://127.0.0.1:4253" };
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            await using var nats = new NatsClient("nats://127.0.0.1:4253");
 
             var receivedMessages = new List<string>();
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
             // Subscribe with wildcard: orders.* matches orders.create, orders.update, etc.
-            await using var sub = await nats.SubscribeAsync<string>("orders.*", cancellationToken: cts.Token);
+            var subscription = nats.SubscribeAsync<string>("orders.*");
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in subscription)
                 {
                     receivedMessages.Add($"{msg.Subject}:{msg.Data}");
                     if (receivedMessages.Count >= 3)
                     {
-                        cts.Cancel();
+                        break;
                     }
                 }
             });
@@ -420,24 +372,21 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            var opts = new NatsOpts { Url = "nats://127.0.0.1:4254" };
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            await using var nats = new NatsClient("nats://127.0.0.1:4254");
 
             var receivedMessages = new List<string>();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
             // Subscribe with multi-level wildcard: orders.> matches orders.* and any deeper nesting
-            await using var sub = await nats.SubscribeAsync<string>("orders.>", cancellationToken: cts.Token);
+            var subscription = nats.SubscribeAsync<string>("orders.>");
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in subscription)
                 {
                     receivedMessages.Add(msg.Subject ?? "null");
                     if (receivedMessages.Count >= 5)
                     {
-                        cts.Cancel();
+                        break;
                     }
                 }
             });
@@ -519,23 +468,20 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            var opts = new NatsOpts { Url = "nats://127.0.0.1:4255" };
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            await using var nats = new NatsClient("nats://127.0.0.1:4255");
 
             var specificMessages = new List<string>();
             var wildcardMessages = new List<string>();
             var allMessages = new List<string>();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
             // Multiple subscribers with different patterns
-            await using var sub1 = await nats.SubscribeAsync<string>("events.user.created", cancellationToken: cts.Token);
-            await using var sub2 = await nats.SubscribeAsync<string>("events.user.*", cancellationToken: cts.Token);
-            await using var sub3 = await nats.SubscribeAsync<string>("events.>", cancellationToken: cts.Token);
+            var sub1 = nats.SubscribeAsync<string>("events.user.created");
+            var sub2 = nats.SubscribeAsync<string>("events.user.*");
+            var sub3 = nats.SubscribeAsync<string>("events.>");
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub1.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub1)
                 {
                     specificMessages.Add(msg.Subject ?? "null");
                 }
@@ -543,7 +489,7 @@ public static class AuthorizationAndFilteringTests
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub2.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub2)
                 {
                     wildcardMessages.Add(msg.Subject ?? "null");
                 }
@@ -551,12 +497,12 @@ public static class AuthorizationAndFilteringTests
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub3.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub3)
                 {
                     allMessages.Add(msg.Subject ?? "null");
                     if (allMessages.Count >= 4)
                     {
-                        cts.Cancel();
+                        break;
                     }
                 }
             });
@@ -637,27 +583,21 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            var opts = new NatsOpts { Url = "nats://127.0.0.1:4256" };
-
             // Create two connections: one for the service, one for the client
-            await using var serviceConn = new NatsConnection(opts);
-            await using var clientConn = new NatsConnection(opts);
-
-            await serviceConn.ConnectAsync();
-            await clientConn.ConnectAsync();
+            await using var serviceConn = new NatsClient("nats://127.0.0.1:4256");
+            await using var clientConn = new NatsClient("nats://127.0.0.1:4256");
 
             // Set up a service that responds to requests
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            await using var sub = await serviceConn.SubscribeAsync<string>("service.echo", cancellationToken: cts.Token);
+            var subscription = serviceConn.SubscribeAsync<string>("service.echo");
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in subscription)
                 {
                     if (msg.ReplyTo != null)
                     {
                         var response = $"Echo: {msg.Data}";
-                        await serviceConn.PublishAsync(msg.ReplyTo, response, cancellationToken: cts.Token);
+                        await serviceConn.PublishAsync(msg.ReplyTo, response);
                         Console.WriteLine($"  Service replied to {msg.ReplyTo} with: {response}");
                     }
                 }
@@ -669,8 +609,7 @@ public static class AuthorizationAndFilteringTests
             Console.WriteLine("  Client sending request...");
             var reply = await clientConn.RequestAsync<string, string>(
                 "service.echo",
-                "Hello, Service!",
-                cancellationToken: cts.Token
+                "Hello, Service!"
             );
 
             Console.WriteLine($"  Client received reply: {reply.Data}");
@@ -722,26 +661,23 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            var opts = new NatsOpts { Url = "nats://127.0.0.1:4257" };
-            await using var nats = new NatsConnection(opts);
-            await nats.ConnectAsync();
+            await using var nats = new NatsClient("nats://127.0.0.1:4257");
 
             var worker1Messages = new List<string>();
             var worker2Messages = new List<string>();
             var worker3Messages = new List<string>();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             // Create 3 workers in the same queue group "workers"
-            await using var sub1 = await nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers", cancellationToken: cts.Token);
-            await using var sub2 = await nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers", cancellationToken: cts.Token);
-            await using var sub3 = await nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers", cancellationToken: cts.Token);
+            var sub1 = nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers");
+            var sub2 = nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers");
+            var sub3 = nats.SubscribeAsync<string>("tasks.process", queueGroup: "workers");
 
             var totalReceived = 0;
             var totalLock = new object();
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub1.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub1)
                 {
                     worker1Messages.Add(msg.Data ?? "null");
                     lock (totalLock) { totalReceived++; }
@@ -750,7 +686,7 @@ public static class AuthorizationAndFilteringTests
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub2.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub2)
                 {
                     worker2Messages.Add(msg.Data ?? "null");
                     lock (totalLock) { totalReceived++; }
@@ -759,7 +695,7 @@ public static class AuthorizationAndFilteringTests
 
             _ = Task.Run(async () =>
             {
-                await foreach (var msg in sub3.Msgs.ReadAllAsync(cts.Token))
+                await foreach (var msg in sub3)
                 {
                     worker3Messages.Add(msg.Data ?? "null");
                     lock (totalLock) { totalReceived++; }
@@ -778,7 +714,6 @@ public static class AuthorizationAndFilteringTests
 
             // Wait for messages to be processed
             await Task.Delay(1000);
-            cts.Cancel();
 
             Console.WriteLine($"  Worker 1 received: {worker1Messages.Count} messages");
             Console.WriteLine($"  Worker 2 received: {worker2Messages.Count} messages");
