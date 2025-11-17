@@ -60,7 +60,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var subscription = leafClient.SubscribeAsync<string>("hub.test");
                 var subscriptionTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in subscription.Msgs)
+                    await foreach (var msg in subscription)
                     {
                         receivedMessages.Add(msg.Data ?? "");
                         if (receivedMessages.Count >= 3)
@@ -140,7 +140,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var subscription = hubClient.SubscribeAsync<string>("leaf.test");
                 var subscriptionTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in subscription.Msgs)
+                    await foreach (var msg in subscription)
                     {
                         receivedMessages.Add(msg.Data ?? "");
                         if (receivedMessages.Count >= 3)
@@ -218,7 +218,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var hubSubscription = hubClient.SubscribeAsync<string>("leaf.test");
                 var hubSubTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in hubSubscription.Msgs)
+                    await foreach (var msg in hubSubscription)
                     {
                         hubReceivedMessages.Add(msg.Data ?? "");
                         if (hubReceivedMessages.Count >= 2)
@@ -229,7 +229,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var leafSubscription = leafClient.SubscribeAsync<string>("hub.test");
                 var leafSubTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in leafSubscription.Msgs)
+                    await foreach (var msg in leafSubscription)
                     {
                         leafReceivedMessages.Add(msg.Data ?? "");
                         if (leafReceivedMessages.Count >= 2)
@@ -324,7 +324,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var subscription = leaf2Client.SubscribeAsync<string>("test.message");
                 var subTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in subscription.Msgs)
+                    await foreach (var msg in subscription)
                     {
                         receivedMessages.Add(msg.Data ?? "");
                         if (receivedMessages.Count >= 2)
@@ -398,7 +398,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var subscription = leafClient.SubscribeAsync<string>("hub.new.test");
                 var subTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in subscription.Msgs)
+                    await foreach (var msg in subscription)
                     {
                         receivedMessages.Add(msg.Data ?? "");
                         if (receivedMessages.Count >= 2)
@@ -485,7 +485,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var subscription = leafClient.SubscribeAsync<string>("hub.test.message");
                 var subTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in subscription.Msgs)
+                    await foreach (var msg in subscription)
                     {
                         receivedMessages.Add(msg.Data ?? "");
                     }
@@ -563,7 +563,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var oldSub = leafClient.SubscribeAsync<string>("old.test");
                 var oldTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in oldSub.Msgs)
+                    await foreach (var msg in oldSub)
                     {
                         oldReceived.Add(msg.Data ?? "");
                         if (oldReceived.Count >= 1)
@@ -592,7 +592,7 @@ public class HubAndSpokeTests : IIntegrationTest
                 var newSub = leafClient.SubscribeAsync<string>("new.test");
                 var newTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in newSub.Msgs)
+                    await foreach (var msg in newSub)
                     {
                         newReceived.Add(msg.Data ?? "");
                         if (newReceived.Count >= 1)
@@ -670,7 +670,7 @@ public class HubAndSpokeTests : IIntegrationTest
 
                 var eventTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in eventSub.Msgs)
+                    await foreach (var msg in eventSub)
                     {
                         receivedMessages.Add($"event:{msg.Data}");
                         if (receivedMessages.Count >= 4)
@@ -680,7 +680,7 @@ public class HubAndSpokeTests : IIntegrationTest
 
                 var dataTask = Task.Run(async () =>
                 {
-                    await foreach (var msg in dataSub.Msgs)
+                    await foreach (var msg in dataSub)
                     {
                         receivedMessages.Add($"data:{msg.Data}");
                     }
