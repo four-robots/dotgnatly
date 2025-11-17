@@ -142,27 +142,40 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 		}
 	}
 
-	// Configure Leaf Node if port is set
+	// Configure Leaf Node listener if port is set
 	if config.LeafNode.Port > 0 {
 		opts.LeafNode.Host = config.LeafNode.Host
 		opts.LeafNode.Port = config.LeafNode.Port
+	}
 
-		// Configure remote leaf node connections
-		if len(config.LeafNode.RemoteURLs) > 0 {
-			opts.LeafNode.Remotes = make([]*server.RemoteLeafOpts, len(config.LeafNode.RemoteURLs))
-			for i, urlStr := range config.LeafNode.RemoteURLs {
-				parsedURL, err := url.Parse(urlStr)
-				if err != nil {
-					continue // Skip invalid URLs
-				}
-				remote := &server.RemoteLeafOpts{
-					URLs: []*url.URL{parsedURL},
-				}
-				if config.LeafNode.AuthUsername != "" {
-					remote.Credentials = config.LeafNode.AuthUsername + ":" + config.LeafNode.AuthPassword
-				}
-				opts.LeafNode.Remotes[i] = remote
+	// Configure remote leaf node connections (independent of listener port)
+	if len(config.LeafNode.RemoteURLs) > 0 {
+		opts.LeafNode.Remotes = make([]*server.RemoteLeafOpts, len(config.LeafNode.RemoteURLs))
+		for i, urlStr := range config.LeafNode.RemoteURLs {
+			parsedURL, err := url.Parse(urlStr)
+			if err != nil {
+				continue // Skip invalid URLs
 			}
+			remote := &server.RemoteLeafOpts{
+				URLs: []*url.URL{parsedURL},
+			}
+			if config.LeafNode.AuthUsername != "" {
+				remote.Credentials = config.LeafNode.AuthUsername + ":" + config.LeafNode.AuthPassword
+			}
+
+			// Handle import/export subjects
+			// NATS uses deny-lists (DenyImports/DenyExports) to restrict subjects
+			// Our API uses allow-lists (ImportSubjects/ExportSubjects) for easier configuration
+			// We convert by inverting: if specific subjects are listed to import/export,
+			// we deny everything else. If empty, we allow all (NATS default).
+			// Note: For wildcard allow-lists, we rely on NATS's default permissive behavior
+			// and skip deny-list configuration (allowing all subjects)
+
+			// For now, we don't configure deny lists, which means all subjects are allowed
+			// This matches NATS default behavior and allows wildcard subjects to work
+			// TODO: Implement proper conversion from allow-list to deny-list for strict filtering
+
+			opts.LeafNode.Remotes[i] = remote
 		}
 	}
 
@@ -808,9 +821,9 @@ func GetClientInfo(clientID C.ulonglong) *C.char {
 
 	// Get detailed client information using Connz with specific CID
 	opts := &server.ConnzOptions{
-		CID:                   cid,
-		Subscriptions:         true,
-		SubscriptionsDetail:   true,
+		CID:                 cid,
+		Subscriptions:       true,
+		SubscriptionsDetail: true,
 	}
 
 	connz, err := srv.Connz(opts)
