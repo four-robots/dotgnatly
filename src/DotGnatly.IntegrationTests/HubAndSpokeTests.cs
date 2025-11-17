@@ -22,10 +22,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422, // Leaf node listening port
+                        Port = 17422, // Leaf node listening port
                         ExportSubjects = new List<string> { "hub.>" } // Export subjects from hub
                     }
                 });
@@ -37,10 +37,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" }, // Connect to hub
+                        RemoteUrls = new List<string> { "nats://localhost:17422" }, // Connect to hub
                         ImportSubjects = new List<string> { "hub.>" } // Import from hub
                     }
                 });
@@ -52,8 +52,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await Task.Delay(1000);
 
                 // Connect NATS clients
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 // Subscribe on leaf node
                 var receivedMessages = new List<string>();
@@ -106,10 +106,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ImportSubjects = new List<string> { "leaf.>" } // Import from leaf nodes
                     }
                 });
@@ -120,10 +120,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ExportSubjects = new List<string> { "leaf.>" } // Export to hub
                     }
                 });
@@ -132,8 +132,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await Task.Delay(1000);
 
                 // Connect NATS clients
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 // Subscribe on hub
                 var receivedMessages = new List<string>();
@@ -181,10 +181,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ImportSubjects = new List<string> { "leaf.>" },
                         ExportSubjects = new List<string> { "hub.>" }
                     }
@@ -196,10 +196,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { "hub.>" },
                         ExportSubjects = new List<string> { "leaf.>" }
                     }
@@ -208,8 +208,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 // Set up subscriptions on both sides
                 var hubReceivedMessages = new List<string>();
@@ -274,10 +274,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ImportSubjects = new List<string> { ">" }, // Import everything
                         ExportSubjects = new List<string> { ">" }  // Export everything
                     }
@@ -289,10 +289,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf1 = new NatsController();
                 await leaf1.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { ">" },
                         ExportSubjects = new List<string> { ">" }
                     }
@@ -304,10 +304,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf2 = new NatsController();
                 await leaf2.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4224,
+                    Port = 14224,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { ">" },
                         ExportSubjects = new List<string> { ">" }
                     }
@@ -316,8 +316,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf2.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var leaf1Client = new NatsClient("nats://localhost:4223");
-                await using var leaf2Client = new NatsClient("nats://localhost:4224");
+                await using var leaf1Client = new NatsClient("nats://localhost:14223");
+                await using var leaf2Client = new NatsClient("nats://localhost:14224");
 
                 // Subscribe on leaf2
                 var receivedMessages = new List<string>();
@@ -365,10 +365,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ExportSubjects = new List<string> { "hub.old.>" }
                     }
                 });
@@ -379,10 +379,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { "hub.>" } // Import all hub subjects
                     }
                 });
@@ -390,8 +390,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 // Subscribe to new subject on leaf (before hub exports it)
                 var receivedMessages = new List<string>();
@@ -453,10 +453,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ExportSubjects = new List<string> { "hub.test.>" }
                     }
                 });
@@ -467,10 +467,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { "hub.>" }
                     }
                 });
@@ -478,8 +478,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 var receivedMessages = new List<string>();
                 var subscription = leafClient.SubscribeAsync<string>("hub.test.message");
@@ -530,10 +530,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ExportSubjects = new List<string> { ">" } // Export everything
                     }
                 });
@@ -544,10 +544,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { "old.>" }
                     }
                 });
@@ -555,8 +555,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 // Test old subject works
                 var oldReceived = new List<string>();
@@ -632,10 +632,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var hub = new NatsController();
                 await hub.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4222,
+                    Port = 14222,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        Port = 7422,
+                        Port = 17422,
                         ExportSubjects = new List<string>
                         {
                             "events.*.created",  // Single-token wildcard
@@ -650,10 +650,10 @@ public class HubAndSpokeTests : IIntegrationTest
                 using var leaf = new NatsController();
                 await leaf.ConfigureAsync(new BrokerConfiguration
                 {
-                    Port = 4223,
+                    Port = 14223,
                     LeafNode = new LeafNodeConfiguration
                     {
-                        RemoteUrls = new List<string> { "nats://localhost:7422" },
+                        RemoteUrls = new List<string> { "nats://localhost:17422" },
                         ImportSubjects = new List<string> { "events.>", "data.>" }
                     }
                 });
@@ -661,8 +661,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:4222");
-                await using var leafClient = new NatsClient("nats://localhost:4223");
+                await using var hubClient = new NatsClient("nats://localhost:14222");
+                await using var leafClient = new NatsClient("nats://localhost:14223");
 
                 var receivedMessages = new List<string>();
                 var eventSub = leafClient.SubscribeAsync<string>("events.*.created");

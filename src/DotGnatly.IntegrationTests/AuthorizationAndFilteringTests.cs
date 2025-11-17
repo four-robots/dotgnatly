@@ -3,6 +3,7 @@ using System.Text.Json;
 using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
 using NATS.Net;
+using NATS.Client.Core;
 
 namespace DotGnatly.IntegrationTests;
 
@@ -63,8 +64,17 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            // Try to connect with correct credentials using connection string format
-            await using var nats = new NatsClient($"nats://testuser:testpass123@127.0.0.1:4250");
+            // Try to connect with correct credentials using NatsOpts
+            var opts = new NatsOpts
+            {
+                Url = "nats://127.0.0.1:4250",
+                AuthOpts = new NatsAuthOpts
+                {
+                    Username = "testuser",
+                    Password = "testpass123"
+                }
+            };
+            await using var nats = new NatsClient(opts);
             Console.WriteLine("✓ Connected with valid credentials");
 
             // Verify connection by publishing and subscribing
@@ -152,7 +162,16 @@ public static class AuthorizationAndFilteringTests
             // Try to connect with wrong password
             try
             {
-                await using var nats = new NatsClient($"nats://validuser:wrongpass@127.0.0.1:4251");
+                var wrongOpts = new NatsOpts
+                {
+                    Url = "nats://127.0.0.1:4251",
+                    AuthOpts = new NatsAuthOpts
+                    {
+                        Username = "validuser",
+                        Password = "wrongpass"
+                    }
+                };
+                await using var nats = new NatsClient(wrongOpts);
                 await nats.PublishAsync("test", "test"); // Try to use connection
                 Console.WriteLine("❌ Connection should have been rejected with invalid credentials");
                 return false;
@@ -165,7 +184,11 @@ public static class AuthorizationAndFilteringTests
             // Try to connect with no credentials
             try
             {
-                await using var nats = new NatsClient($"nats://127.0.0.1:4251");
+                var noAuthOpts = new NatsOpts
+                {
+                    Url = "nats://127.0.0.1:4251"
+                };
+                await using var nats = new NatsClient(noAuthOpts);
                 await nats.PublishAsync("test", "test"); // Try to use connection
                 Console.WriteLine("❌ Connection should have been rejected without credentials");
                 return false;
@@ -220,8 +243,16 @@ public static class AuthorizationAndFilteringTests
 
         try
         {
-            // Try to connect with correct token using connection string format
-            await using var nats = new NatsClient($"nats://supersecrettoken123@127.0.0.1:4252");
+            // Try to connect with correct token using NatsOpts
+            var opts = new NatsOpts
+            {
+                Url = "nats://127.0.0.1:4252",
+                AuthOpts = new NatsAuthOpts
+                {
+                    Token = "supersecrettoken123"
+                }
+            };
+            await using var nats = new NatsClient(opts);
             Console.WriteLine("✓ Connected with valid token");
 
             // Verify connection works with pub/sub
