@@ -1,6 +1,7 @@
 using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
 using NATS.Net;
+using NATS.Client.Core;
 
 namespace DotGnatly.IntegrationTests;
 
@@ -52,8 +53,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await Task.Delay(1000);
 
                 // Connect NATS clients
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 // Subscribe on leaf node
                 var receivedMessages = new List<string>();
@@ -132,8 +133,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await Task.Delay(1000);
 
                 // Connect NATS clients
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 // Subscribe on hub
                 var receivedMessages = new List<string>();
@@ -208,8 +209,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 // Set up subscriptions on both sides
                 var hubReceivedMessages = new List<string>();
@@ -316,8 +317,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf2.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var leaf1Client = new NatsClient("nats://localhost:14223");
-                await using var leaf2Client = new NatsClient("nats://localhost:14224");
+                await using var leaf1Client = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
+                await using var leaf2Client = new NatsClient(new NatsOpts { Url = "nats://localhost:14224" });
 
                 // Subscribe on leaf2
                 var receivedMessages = new List<string>();
@@ -390,8 +391,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 // Subscribe to new subject on leaf (before hub exports it)
                 var receivedMessages = new List<string>();
@@ -478,8 +479,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 var receivedMessages = new List<string>();
                 var subscription = leafClient.SubscribeAsync<string>("hub.test.message");
@@ -555,8 +556,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 // Test old subject works
                 var oldReceived = new List<string>();
@@ -661,8 +662,8 @@ public class HubAndSpokeTests : IIntegrationTest
                 await leaf.WaitForReadyAsync(timeoutSeconds: 5);
                 await Task.Delay(1000);
 
-                await using var hubClient = new NatsClient("nats://localhost:14222");
-                await using var leafClient = new NatsClient("nats://localhost:14223");
+                await using var hubClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14222" });
+                await using var leafClient = new NatsClient(new NatsOpts { Url = "nats://localhost:14223" });
 
                 var receivedMessages = new List<string>();
                 var eventSub = leafClient.SubscribeAsync<string>("events.*.created");
