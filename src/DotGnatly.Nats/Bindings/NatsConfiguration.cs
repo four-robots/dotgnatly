@@ -71,7 +71,8 @@ public class ServerConfig
     public int HTTPSPort { get; set; } = 0; // 0 means disabled
 
     [JsonPropertyName("auth")]
-    public AuthConfig Auth { get; set; } = new AuthConfig();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AuthConfig? Auth { get; set; }
 
     [JsonPropertyName("leaf_node")]
     public LeafNodeConfig LeafNode { get; set; } = new LeafNodeConfig();
@@ -95,7 +96,8 @@ public class AuthConfig
     public string? Token { get; set; }
 
     [JsonPropertyName("allowed_users")]
-    public List<string> AllowedUsers { get; set; } = new List<string>();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? AllowedUsers { get; set; }
 }
 
 /// <summary>

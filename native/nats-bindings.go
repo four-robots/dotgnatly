@@ -174,16 +174,15 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 			}
 
 			// Create a default user for leaf connections
+			// Note: When using a Users array, we must NOT set opts.LeafNode.Username
+			// as NATS server rejects configs with both username AND users array
 			leafUser := &server.User{
-				Username:    "$LEAFNODE_DEFAULT",
+				Username:    "",  // Empty username for anonymous leaf connections
 				Password:    "",
 				Permissions: leafPerms,
 			}
 
 			opts.LeafNode.Users = []*server.User{leafUser}
-
-			// Allow anonymous connections to use this user
-			opts.LeafNode.Username = "$LEAFNODE_DEFAULT"
 		}
 	}
 

@@ -119,20 +119,33 @@ public static class ConfigurationMapper
     /// Maps an AuthConfiguration to an AuthConfig.
     /// </summary>
     /// <param name="auth">The AuthConfiguration to map.</param>
-    /// <returns>An AuthConfig instance with the same values.</returns>
-    private static AuthConfig MapToAuthConfig(AuthConfiguration auth)
+    /// <returns>An AuthConfig instance with the same values, or null if no auth is configured.</returns>
+    private static AuthConfig? MapToAuthConfig(AuthConfiguration auth)
     {
         if (auth == null)
         {
-            return new AuthConfig();
+            return null; // No auth configured
+        }
+
+        // NATS server validation: cannot have both single user/pass AND users array
+        // If no auth is configured, return null to omit the entire auth section
+        var hasAllowedUsers = auth.AllowedUsers != null && auth.AllowedUsers.Count > 0;
+        var hasSingleAuth = !string.IsNullOrEmpty(auth.Username) || !string.IsNullOrEmpty(auth.Password) || !string.IsNullOrEmpty(auth.Token);
+
+        // If no authentication is configured at all, return null
+        if (!hasAllowedUsers && !hasSingleAuth)
+        {
+            return null;
         }
 
         return new AuthConfig
         {
-            Username = auth.Username,
-            Password = auth.Password,
+            // Only set Username/Password if not using AllowedUsers array
+            Username = hasAllowedUsers ? null : auth.Username,
+            Password = hasAllowedUsers ? null : auth.Password,
             Token = auth.Token,
-            AllowedUsers = new List<string>(auth.AllowedUsers)
+            // Set to null if not using AllowedUsers to avoid serialization
+            AllowedUsers = hasAllowedUsers ? new List<string>(auth.AllowedUsers!) : null
         };
     }
 
@@ -141,7 +154,7 @@ public static class ConfigurationMapper
     /// </summary>
     /// <param name="auth">The AuthConfig to map.</param>
     /// <returns>An AuthConfiguration instance with the same values.</returns>
-    private static AuthConfiguration MapToAuthConfiguration(AuthConfig auth)
+    private static AuthConfiguration MapToAuthConfiguration(AuthConfig? auth)
     {
         if (auth == null)
         {
@@ -153,7 +166,7 @@ public static class ConfigurationMapper
             Username = auth.Username,
             Password = auth.Password,
             Token = auth.Token,
-            AllowedUsers = new List<string>(auth.AllowedUsers)
+            AllowedUsers = auth.AllowedUsers != null ? new List<string>(auth.AllowedUsers) : new List<string>()
         };
     }
 
