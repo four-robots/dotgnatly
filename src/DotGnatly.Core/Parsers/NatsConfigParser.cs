@@ -32,6 +32,9 @@ public class NatsConfigParser
     /// <returns>A BrokerConfiguration instance with parsed values</returns>
     public static BrokerConfiguration Parse(string content)
     {
+        if (content == null)
+            throw new ArgumentNullException(nameof(content));
+
         var config = new BrokerConfiguration();
         var lines = content.Split('\n', StringSplitOptions.None);
         var context = new ParseContext(lines);
@@ -97,7 +100,7 @@ public class NatsConfigParser
                 config.LogFileMaxNum = ParseInt(value);
                 break;
             case "max_payload":
-                config.MaxPayload = (int)ParseSize(value);
+                config.MaxPayload = ParseSize(value);
                 break;
             case "write_deadline":
                 config.WriteDeadline = ParseTimeSeconds(value);

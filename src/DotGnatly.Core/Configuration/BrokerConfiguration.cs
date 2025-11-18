@@ -44,7 +44,7 @@ public class BrokerConfiguration : ICloneable
     /// Gets or sets the maximum message payload size in bytes.
     /// </summary>
     [JsonPropertyName("maxPayload")]
-    public int MaxPayload { get; set; } = 1048576; // 1MB
+    public long MaxPayload { get; set; } = 1048576; // 1MB
 
     /// <summary>
     /// Gets or sets the maximum protocol control line size.
