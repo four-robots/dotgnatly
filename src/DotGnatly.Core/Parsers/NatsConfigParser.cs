@@ -710,6 +710,14 @@ public class NatsConfigParser
             {
                 switch (key.ToLowerInvariant())
                 {
+                    case "stream":
+                        item.Type = "stream";
+                        item.Subject = UnquoteString(value);
+                        break;
+                    case "service":
+                        item.Type = "service";
+                        item.Subject = UnquoteString(value);
+                        break;
                     case "subject":
                         item.Subject = UnquoteString(value);
                         break;
@@ -785,14 +793,18 @@ public class NatsConfigParser
     {
         var tls = new TlsConfiguration();
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var context = new ParseContext(lines);
 
-        foreach (var line in lines)
+        while (context.HasMore())
         {
-            var trimmed = line.Trim();
-            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+            var line = context.CurrentLine.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            {
+                context.MoveNext();
                 continue;
+            }
 
-            if (TryParseKeyValue(trimmed, out var key, out var value))
+            if (TryParseKeyValue(line, out var key, out var value))
             {
                 switch (key.ToLowerInvariant())
                 {
@@ -829,9 +841,21 @@ public class NatsConfigParser
                         tls.CertMatch = UnquoteString(value);
                         break;
                     case "pinned_certs":
+                        // Handle single-line arrays: pinned_certs: ["cert1", "cert2"]
                         tls.PinnedCerts = ParseStringArray(value);
                         break;
                 }
+                context.MoveNext();
+            }
+            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "pinned_certs")
+            {
+                // Handle multi-line arrays: pinned_certs: [ ... ]
+                var blockContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
+                tls.PinnedCerts = ParseStringArray(blockContent);
+            }
+            else
+            {
+                context.MoveNext();
             }
         }
 
