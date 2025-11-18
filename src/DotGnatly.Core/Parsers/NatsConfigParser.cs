@@ -742,6 +742,29 @@ public class NatsConfigParser
                     }
                 }
             }
+
+            // Parse remaining fields after the nested object (e.g., ", to: value")
+            // Get content after the closing brace of the nested object
+            var remainingContent = content.Substring(nestedMatch.Index + nestedMatch.Length);
+            var remainingPairs = remainingContent.Split(',');
+            foreach (var pair in remainingPairs)
+            {
+                if (TryParseKeyValue(pair, out var key, out var value))
+                {
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "to":
+                            item.To = UnquoteString(value);
+                            break;
+                        case "response_type":
+                            item.ResponseType = UnquoteString(value);
+                            break;
+                        case "response_threshold":
+                            item.ResponseThreshold = UnquoteString(value);
+                            break;
+                    }
+                }
+            }
         }
         else
         {
