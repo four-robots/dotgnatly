@@ -561,6 +561,18 @@ public class NatsConfigParser
                         account.Jetstream = value.Equals("enabled", StringComparison.OrdinalIgnoreCase) ||
                                           ParseBool(value);
                         break;
+                    case "users":
+                        // Handle single-line arrays: users: [ {...} ]
+                        account.Users = ParseUsersArray(value);
+                        break;
+                    case "imports":
+                        // Handle single-line arrays: imports: [ {...} ]
+                        account.Imports = ParseImportsExportsArray(value);
+                        break;
+                    case "exports":
+                        // Handle single-line arrays: exports: [ {...} ]
+                        account.Exports = ParseImportsExportsArray(value);
+                        break;
                 }
                 context.MoveNext();
             }
@@ -899,6 +911,10 @@ public class NatsConfigParser
                             break;
                         case "token":
                             auth.Token = UnquoteString(value);
+                            break;
+                        case "users":
+                            // Handle single-line arrays: users: [ {...} ]
+                            auth.Users = ParseUsersArray(value);
                             break;
                     }
                     context.MoveNext();
