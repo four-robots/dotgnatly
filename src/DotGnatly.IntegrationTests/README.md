@@ -109,24 +109,76 @@ dotnet build src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.c
 ```
 
 ### Run All Tests
+
+**Standard mode** (shows summary and failed tests only):
 ```bash
 dotnet run --project src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.csproj
 ```
 
-### Expected Output
+**Verbose mode** (shows all test output):
+```bash
+dotnet run --project src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.csproj -- --verbose
+# or
+dotnet run --project src/MessageBroker.IntegrationTests/MessageBroker.IntegrationTests.csproj -- -v
+```
+
+### Output Modes
+
+**Standard mode:**
+- Shows test summary
+- Shows failed tests with error messages
+- Suppresses individual test output for cleaner results
+- Ideal for CI/CD pipelines
+
+**Verbose mode:**
+- Shows all test suite progress
+- Shows individual test start/completion
+- Shows detailed test output from test methods
+- Shows full stack traces for exceptions
+- Ideal for debugging test failures
+
+### Expected Output (Standard Mode)
 ```
 ========================================
 DotGnatly Integration Tests
 ========================================
 
-Running 6 test suites...
+========================================
+Test Results Summary
+========================================
+Total Tests: 62
+Passed: 62
+Failed: 0
+Success Rate: 100.0%
 
-Running MultiServerTests...
+✓ All integration tests passed!
+```
+
+### Expected Output (Verbose Mode)
+```
+========================================
+DotGnatly Integration Tests
+========================================
+
+Running in VERBOSE mode - showing all test output
+
+Running 12 test suites...
+
+[1/12] Running MultiServerTests...
 ------------------------------------------------------------
+  → Starting: Multiple servers on different ports can start simultaneously
   ✓ Multiple servers on different ports can start simultaneously
+  → Starting: Multiple servers maintain independent configurations
   ✓ Multiple servers maintain independent configurations
   ...
 ✓ MultiServerTests completed
+
+[2/12] Running LeafNodeConfigurationTests...
+------------------------------------------------------------
+  → Starting: Configure leaf node with import and export subjects
+  ✓ Configure leaf node with import and export subjects
+  ...
+✓ LeafNodeConfigurationTests completed
 
 ...
 

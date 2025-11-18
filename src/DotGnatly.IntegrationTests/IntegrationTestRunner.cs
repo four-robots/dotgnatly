@@ -6,7 +6,6 @@ namespace DotGnatly.IntegrationTests;
 public class IntegrationTestRunner
 {
     private readonly List<IIntegrationTest> _tests = new();
-    private readonly TestResults _results = new();
 
     public IntegrationTestRunner()
     {
@@ -25,33 +24,53 @@ public class IntegrationTestRunner
         _tests.Add(new LoggingAndClusteringTests());
     }
 
-    public async Task<TestResults> RunAllTestsAsync()
+    public async Task<TestResults> RunAllTestsAsync(bool verbose = false)
     {
-        Console.WriteLine($"Running {_tests.Count} test suites...");
-        Console.WriteLine();
+        var results = new TestResults(verbose);
+
+        if (verbose)
+        {
+            Console.WriteLine($"Running {_tests.Count} test suites...");
+            Console.WriteLine();
+        }
 
         for (int i = 0; i < _tests.Count; i++)
         {
             var test = _tests[i];
-            Console.WriteLine($"[{i + 1}/{_tests.Count}] Running {test.GetType().Name}...");
-            Console.WriteLine(new string('-', 60));
+
+            if (verbose)
+            {
+                Console.WriteLine($"[{i + 1}/{_tests.Count}] Running {test.GetType().Name}...");
+                Console.WriteLine(new string('-', 60));
+            }
 
             try
             {
-                await test.RunAsync(_results);
-                Console.WriteLine($"✓ {test.GetType().Name} completed");
+                await test.RunAsync(results);
+
+                if (verbose)
+                {
+                    Console.WriteLine($"✓ {test.GetType().Name} completed");
+                }
             }
             catch (Exception ex)
             {
+                // Always show exceptions
                 Console.WriteLine($"✗ {test.GetType().Name} failed with exception: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
-                _results.AddFailure($"{test.GetType().Name}: {ex.Message}");
+                if (verbose)
+                {
+                    Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                }
+                results.AddFailure($"{test.GetType().Name}: {ex.Message}");
             }
 
-            Console.WriteLine();
+            if (verbose)
+            {
+                Console.WriteLine();
+            }
         }
 
-        return _results;
+        return results;
     }
 }
 
@@ -71,16 +90,26 @@ public class TestResults
     private int _totalTests = 0;
     private int _passedTests = 0;
     private readonly List<string> _failures = new();
+    private readonly bool _verbose;
+
+    public TestResults(bool verbose = false)
+    {
+        _verbose = verbose;
+    }
 
     public int TotalTests => _totalTests;
     public int PassedTests => _passedTests;
     public int FailedTests => _totalTests - _passedTests;
     public double SuccessRate => _totalTests == 0 ? 0 : (_passedTests / (double)_totalTests) * 100;
     public IReadOnlyList<string> Failures => _failures;
+    public bool IsVerbose => _verbose;
 
     public void StartTest(string testName)
     {
-        Console.WriteLine($"  → Starting: {testName}");
+        if (_verbose)
+        {
+            Console.WriteLine($"  → Starting: {testName}");
+        }
     }
 
     public void RecordTest(string testName, bool passed, string? errorMessage = null)
@@ -90,10 +119,14 @@ public class TestResults
         if (passed)
         {
             _passedTests++;
-            Console.WriteLine($"  ✓ {testName}");
+            if (_verbose)
+            {
+                Console.WriteLine($"  ✓ {testName}");
+            }
         }
         else
         {
+            // Always show failed tests
             Console.WriteLine($"  ✗ {testName}");
             if (!string.IsNullOrEmpty(errorMessage))
             {
@@ -117,7 +150,18 @@ public class TestResults
         StartTest(testName);
         try
         {
-            var result = await testFunc();
+            bool result;
+            if (_verbose)
+            {
+                result = await testFunc();
+            }
+            else
+            {
+                using (SuppressConsoleOutput())
+                {
+                    result = await testFunc();
+                }
+            }
             RecordTest(testName, result, result ? null : "Test returned false");
         }
         catch (Exception ex)
@@ -131,7 +175,17 @@ public class TestResults
         StartTest(testName);
         try
         {
-            await testFunc();
+            if (_verbose)
+            {
+                await testFunc();
+            }
+            else
+            {
+                using (SuppressConsoleOutput())
+                {
+                    await testFunc();
+                }
+            }
             RecordTest(testName, true);
         }
         catch (Exception ex)
@@ -145,7 +199,17 @@ public class TestResults
         StartTest(testName);
         try
         {
-            await testFunc();
+            if (_verbose)
+            {
+                await testFunc();
+            }
+            else
+            {
+                using (SuppressConsoleOutput())
+                {
+                    await testFunc();
+                }
+            }
             RecordTest(testName, false, $"Expected {typeof(TException).Name} but no exception was thrown");
         }
         catch (TException)
@@ -155,6 +219,31 @@ public class TestResults
         catch (Exception ex)
         {
             RecordTest(testName, false, $"Expected {typeof(TException).Name} but got {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private IDisposable SuppressConsoleOutput()
+    {
+        return new ConsoleOutputSuppressor();
+    }
+
+    private class ConsoleOutputSuppressor : IDisposable
+    {
+        private readonly TextWriter _originalOut;
+        private readonly TextWriter _originalError;
+
+        public ConsoleOutputSuppressor()
+        {
+            _originalOut = Console.Out;
+            _originalError = Console.Error;
+            Console.SetOut(TextWriter.Null);
+            Console.SetError(TextWriter.Null);
+        }
+
+        public void Dispose()
+        {
+            Console.SetOut(_originalOut);
+            Console.SetError(_originalError);
         }
     }
 }

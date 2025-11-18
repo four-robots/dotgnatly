@@ -1,12 +1,21 @@
 using DotGnatly.IntegrationTests;
 
+// Parse command-line arguments
+bool verbose = args.Contains("--verbose") || args.Contains("-v");
+
 Console.WriteLine("========================================");
 Console.WriteLine("MessageBroker.NET Integration Tests");
 Console.WriteLine("========================================");
 Console.WriteLine();
 
+if (verbose)
+{
+    Console.WriteLine("Running in VERBOSE mode - showing all test output");
+    Console.WriteLine();
+}
+
 var testRunner = new IntegrationTestRunner();
-var results = await testRunner.RunAllTestsAsync();
+var results = await testRunner.RunAllTestsAsync(verbose);
 
 Console.WriteLine();
 Console.WriteLine("========================================");
