@@ -284,9 +284,10 @@ public class NatsConfigParser
         key = line.Substring(0, separatorIndex).Trim();
         value = line.Substring(separatorIndex + 1).Trim();
 
-        // Reject lines where the key portion contains '{' - these are inline block starts
-        // e.g., "authorization {timeout: 60}" should not be parsed as a key-value pair
-        if (key.Contains('{'))
+        // Reject lines that are block starts (both inline and multi-line)
+        // 1. Inline blocks: "authorization {timeout: 60}" - key contains '{'
+        // 2. Multi-line blocks: "SYS: {" - value starts with '{'
+        if (key.Contains('{') || value.StartsWith("{"))
         {
             return false;
         }
