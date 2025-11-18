@@ -681,16 +681,23 @@ public class NatsConfigParser
         if (content.EndsWith("]"))
             content = content.Substring(0, content.Length - 1);
 
-        // Parse each import/export object (supports nested objects like {stream: {account: SYS, subject: foo}})
+        // Parse each import/export object (supports nested objects like {stream: {account: SYS, subject: foo}, to: bar})
+        // This regex matches balanced braces: outer braces can contain nested braces and content after them
         var objectMatches = System.Text.RegularExpressions.Regex.Matches(
             content,
-            @"\{([^}]*(?:\{[^}]*\}[^}]*)*)\}",
+            @"\{(?:[^{}]|\{[^{}]*\})*\}",
             System.Text.RegularExpressions.RegexOptions.Singleline
         );
 
         foreach (System.Text.RegularExpressions.Match match in objectMatches)
         {
-            var objectContent = match.Groups[1].Value;
+            // Remove outer braces and pass content to parser
+            var objectContent = match.Value.Trim();
+            if (objectContent.StartsWith("{"))
+                objectContent = objectContent.Substring(1);
+            if (objectContent.EndsWith("}"))
+                objectContent = objectContent.Substring(0, objectContent.Length - 1);
+
             var item = ParseImportExportObject(objectContent);
             items.Add(item);
         }
