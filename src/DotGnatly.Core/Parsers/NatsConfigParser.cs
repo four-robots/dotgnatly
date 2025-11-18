@@ -284,10 +284,17 @@ public class NatsConfigParser
         key = line.Substring(0, separatorIndex).Trim();
         value = line.Substring(separatorIndex + 1).Trim();
 
-        // Reject lines that are block starts (both inline and multi-line)
+        // Reject lines that are block/array starts
         // 1. Inline blocks: "authorization {timeout: 60}" - key contains '{'
         // 2. Multi-line blocks: "SYS: {" - value starts with '{'
+        // 3. Multi-line arrays: "users: [" (no closing bracket) - incomplete array
         if (key.Contains('{') || value.StartsWith("{"))
+        {
+            return false;
+        }
+
+        // Reject multi-line array starts (value is just "[" or "[ " without closing bracket)
+        if (value.StartsWith("[") && !value.Contains("]"))
         {
             return false;
         }
@@ -306,32 +313,7 @@ public class NatsConfigParser
             return false;
         }
 
-        // Check if there's a key-value separator (: or =) before the brace
-        // If so, the brace is part of a value, not a block start
-        var colonIndex = line.IndexOf(':');
-        var equalsIndex = line.IndexOf('=');
-
-        int separatorIndex = -1;
-        if (colonIndex >= 0 && equalsIndex >= 0)
-        {
-            separatorIndex = Math.Min(colonIndex, equalsIndex);
-        }
-        else if (colonIndex >= 0)
-        {
-            separatorIndex = colonIndex;
-        }
-        else if (equalsIndex >= 0)
-        {
-            separatorIndex = equalsIndex;
-        }
-
-        // If separator comes before the brace, this is a value, not a block
-        if (separatorIndex >= 0 && separatorIndex < openBraceIndex)
-        {
-            return false;
-        }
-
-        // This is a block start (either inline or multi-line)
+        // Extract the block name (everything before the opening brace)
         blockName = line.Substring(0, openBraceIndex).Trim();
         return !string.IsNullOrWhiteSpace(blockName);
     }
