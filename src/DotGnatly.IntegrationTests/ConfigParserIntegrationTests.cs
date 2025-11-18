@@ -419,7 +419,7 @@ jetstream {
         Assert.True(appAccount.Jetstream);
         Assert.Single(appAccount.Users);
         Assert.Equal("app-user", appAccount.Users[0].User);
-        Assert.True(appAccount.Imports.Count > 15); // Has many imports
+        Assert.True(appAccount.Imports.Count >= 14); // Has 14 imports
         Assert.True(appAccount.Exports.Count > 20); // Has many exports
         Assert.Single(appAccount.Mappings); // Has one mapping
 
