@@ -1014,10 +1014,20 @@ public class NatsConfigParser
                 }
                 context.MoveNext();
             }
-            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "tls")
+            else if (TryParseBlockStart(line, out var blockName))
             {
-                var blockContent = ExtractBlock(context);
-                remote.Tls = ParseTlsBlock(blockContent);
+                switch (blockName.ToLowerInvariant())
+                {
+                    case "tls":
+                        var tlsContent = ExtractBlock(context);
+                        remote.Tls = ParseTlsBlock(tlsContent);
+                        break;
+                    case "urls":
+                        // Handle multi-line urls array
+                        var urlsContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
+                        remote.Urls = ParseStringArray(urlsContent);
+                        break;
+                }
             }
             else
             {
@@ -1039,8 +1049,11 @@ public class NatsConfigParser
         if (value.EndsWith("]"))
             value = value.Substring(0, value.Length - 1);
 
-        // Split by comma and clean up
-        var items = value.Split(',');
+        // Check if this is a comma-separated or newline-separated array
+        char separator = value.Contains(',') ? ',' : '\n';
+
+        // Split and clean up
+        var items = value.Split(separator);
         foreach (var item in items)
         {
             var cleaned = UnquoteString(item.Trim());
