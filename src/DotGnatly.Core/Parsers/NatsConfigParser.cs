@@ -32,6 +32,9 @@ public class NatsConfigParser
     /// <returns>A BrokerConfiguration instance with parsed values</returns>
     public static BrokerConfiguration Parse(string content)
     {
+        if (content == null)
+            throw new ArgumentNullException(nameof(content));
+
         var config = new BrokerConfiguration();
         var lines = content.Split('\n', StringSplitOptions.None);
         var context = new ParseContext(lines);
@@ -97,7 +100,7 @@ public class NatsConfigParser
                 config.LogFileMaxNum = ParseInt(value);
                 break;
             case "max_payload":
-                config.MaxPayload = (int)ParseSize(value);
+                config.MaxPayload = ParseSize(value);
                 break;
             case "write_deadline":
                 config.WriteDeadline = ParseTimeSeconds(value);
@@ -209,7 +212,27 @@ public class NatsConfigParser
             }
             else if (TryParseBlockStart(line, out var blockName))
             {
-                var blockContent = ExtractBlock(context);
+                string blockContent;
+
+                // Check if this is an inline block (all on one line)
+                if (IsInlineBlock(line))
+                {
+                    blockContent = ExtractInlineBlockContent(line);
+                    context.MoveNext();
+                }
+                else
+                {
+                    // Determine if we're extracting a block {...} or array [...]
+                    if (line.Contains('['))
+                    {
+                        blockContent = ExtractArray(context);
+                    }
+                    else
+                    {
+                        blockContent = ExtractBlock(context);
+                    }
+                }
+
                 switch (blockName.ToLowerInvariant())
                 {
                     case "tls":
@@ -272,6 +295,21 @@ public class NatsConfigParser
         key = line.Substring(0, separatorIndex).Trim();
         value = line.Substring(separatorIndex + 1).Trim();
 
+        // Reject lines that are block/array starts
+        // 1. Inline blocks: "authorization {timeout: 60}" - key contains '{'
+        // 2. Multi-line blocks: "SYS: {" - value starts with '{'
+        // 3. Multi-line arrays: "users: [" (no closing bracket) - incomplete array
+        if (key.Contains('{') || value.StartsWith("{"))
+        {
+            return false;
+        }
+
+        // Reject multi-line array starts (value is just "[" or "[ " without closing bracket)
+        if (value.StartsWith("[") && !value.Contains("]"))
+        {
+            return false;
+        }
+
         return !string.IsNullOrWhiteSpace(key);
     }
 
@@ -279,14 +317,56 @@ public class NatsConfigParser
     {
         blockName = string.Empty;
 
-        // Check if line ends with opening brace
-        if (line.TrimEnd().EndsWith("{"))
+        // Check if line has an opening brace or bracket
+        var openBraceIndex = line.IndexOf('{');
+        var openBracketIndex = line.IndexOf('[');
+
+        int openIndex = -1;
+        if (openBraceIndex >= 0 && openBracketIndex >= 0)
         {
-            blockName = line.Substring(0, line.LastIndexOf('{')).Trim();
-            return !string.IsNullOrWhiteSpace(blockName);
+            openIndex = Math.Min(openBraceIndex, openBracketIndex);
+        }
+        else if (openBraceIndex >= 0)
+        {
+            openIndex = openBraceIndex;
+        }
+        else if (openBracketIndex >= 0)
+        {
+            openIndex = openBracketIndex;
         }
 
-        return false;
+        if (openIndex < 0)
+        {
+            return false;
+        }
+
+        // Extract the block name (everything before the opening brace/bracket)
+        blockName = line.Substring(0, openIndex).Trim();
+        // Remove trailing colon or equals if present
+        if (blockName.EndsWith(":") || blockName.EndsWith("="))
+        {
+            blockName = blockName.Substring(0, blockName.Length - 1).Trim();
+        }
+        return !string.IsNullOrWhiteSpace(blockName);
+    }
+
+    private static bool IsInlineBlock(string line)
+    {
+        var trimmed = line.Trim();
+        return trimmed.Contains('{') && trimmed.TrimEnd().EndsWith("}");
+    }
+
+    private static string ExtractInlineBlockContent(string line)
+    {
+        var openBraceIndex = line.IndexOf('{');
+        var closeBraceIndex = line.LastIndexOf('}');
+
+        if (openBraceIndex >= 0 && closeBraceIndex > openBraceIndex)
+        {
+            return line.Substring(openBraceIndex + 1, closeBraceIndex - openBraceIndex - 1);
+        }
+
+        return string.Empty;
     }
 
     private static string ExtractBlock(ParseContext context)
@@ -307,6 +387,34 @@ public class NatsConfigParser
             }
 
             if (braceCount > 0)
+            {
+                sb.AppendLine(line);
+            }
+
+            context.MoveNext();
+        }
+
+        return sb.ToString();
+    }
+
+    private static string ExtractArray(ParseContext context)
+    {
+        var sb = new StringBuilder();
+        var bracketCount = 1; // We already encountered the opening bracket
+        context.MoveNext();
+
+        while (context.HasMore() && bracketCount > 0)
+        {
+            var line = context.CurrentLine;
+
+            // Count brackets
+            foreach (var ch in line)
+            {
+                if (ch == '[') bracketCount++;
+                if (ch == ']') bracketCount--;
+            }
+
+            if (bracketCount > 0)
             {
                 sb.AppendLine(line);
             }
@@ -456,12 +564,25 @@ public class NatsConfigParser
                         account.Jetstream = value.Equals("enabled", StringComparison.OrdinalIgnoreCase) ||
                                           ParseBool(value);
                         break;
+                    case "users":
+                        // Handle single-line arrays: users: [ {...} ]
+                        account.Users = ParseUsersArray(value);
+                        break;
+                    case "imports":
+                        // Handle single-line arrays: imports: [ {...} ]
+                        account.Imports = ParseImportsExportsArray(value);
+                        break;
+                    case "exports":
+                        // Handle single-line arrays: exports: [ {...} ]
+                        account.Exports = ParseImportsExportsArray(value);
+                        break;
                 }
                 context.MoveNext();
             }
             else if (TryParseBlockStart(line, out var blockName))
             {
-                var blockContent = ExtractBlock(context);
+                // Determine if we're extracting a block {...} or array [...]
+                var blockContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
                 switch (blockName.ToLowerInvariant())
                 {
                     case "users":
@@ -589,6 +710,14 @@ public class NatsConfigParser
             {
                 switch (key.ToLowerInvariant())
                 {
+                    case "stream":
+                        item.Type = "stream";
+                        item.Subject = UnquoteString(value);
+                        break;
+                    case "service":
+                        item.Type = "service";
+                        item.Subject = UnquoteString(value);
+                        break;
                     case "subject":
                         item.Subject = UnquoteString(value);
                         break;
@@ -664,14 +793,18 @@ public class NatsConfigParser
     {
         var tls = new TlsConfiguration();
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var context = new ParseContext(lines);
 
-        foreach (var line in lines)
+        while (context.HasMore())
         {
-            var trimmed = line.Trim();
-            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+            var line = context.CurrentLine.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            {
+                context.MoveNext();
                 continue;
+            }
 
-            if (TryParseKeyValue(trimmed, out var key, out var value))
+            if (TryParseKeyValue(line, out var key, out var value))
             {
                 switch (key.ToLowerInvariant())
                 {
@@ -708,9 +841,21 @@ public class NatsConfigParser
                         tls.CertMatch = UnquoteString(value);
                         break;
                     case "pinned_certs":
+                        // Handle single-line arrays: pinned_certs: ["cert1", "cert2"]
                         tls.PinnedCerts = ParseStringArray(value);
                         break;
                 }
+                context.MoveNext();
+            }
+            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "pinned_certs")
+            {
+                // Handle multi-line arrays: pinned_certs: [ ... ]
+                var blockContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
+                tls.PinnedCerts = ParseStringArray(blockContent);
+            }
+            else
+            {
+                context.MoveNext();
             }
         }
 
@@ -720,48 +865,91 @@ public class NatsConfigParser
     private static AuthorizationConfiguration ParseAuthorizationBlock(string content)
     {
         var auth = new AuthorizationConfiguration();
-        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var context = new ParseContext(lines);
 
-        while (context.HasMore())
+        // Check if content is inline (comma-separated) or multi-line
+        var isInline = content.Contains(',') && !content.Contains('\n');
+
+        if (isInline)
         {
-            var line = context.CurrentLine.Trim();
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            // Parse comma-separated inline content
+            var pairs = content.Split(',');
+            foreach (var pair in pairs)
             {
-                context.MoveNext();
-                continue;
-            }
-
-            if (TryParseKeyValue(line, out var key, out var value))
-            {
-                switch (key.ToLowerInvariant())
+                if (TryParseKeyValue(pair, out var key, out var value))
                 {
-                    case "timeout":
-                        auth.Timeout = ParseInt(value);
-                        break;
-                    case "user":
-                        auth.User = UnquoteString(value);
-                        break;
-                    case "password":
-                        auth.Password = UnquoteString(value);
-                        break;
-                    case "account":
-                        auth.Account = UnquoteString(value);
-                        break;
-                    case "token":
-                        auth.Token = UnquoteString(value);
-                        break;
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "timeout":
+                            auth.Timeout = ParseInt(value);
+                            break;
+                        case "user":
+                            auth.User = UnquoteString(value);
+                            break;
+                        case "password":
+                            auth.Password = UnquoteString(value);
+                            break;
+                        case "account":
+                            auth.Account = UnquoteString(value);
+                            break;
+                        case "token":
+                            auth.Token = UnquoteString(value);
+                            break;
+                    }
                 }
-                context.MoveNext();
             }
-            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "users")
+        }
+        else
+        {
+            // Parse multi-line content
+            var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var context = new ParseContext(lines);
+
+            while (context.HasMore())
             {
-                var blockContent = ExtractBlock(context);
-                auth.Users = ParseUsersArray(blockContent);
-            }
-            else
-            {
-                context.MoveNext();
+                var line = context.CurrentLine.Trim();
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                {
+                    context.MoveNext();
+                    continue;
+                }
+
+                // Check for blocks BEFORE key-value pairs
+                if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "users")
+                {
+                    // Determine if we're extracting a block {...} or array [...]
+                    var blockContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
+                    auth.Users = ParseUsersArray(blockContent);
+                }
+                else if (TryParseKeyValue(line, out var key, out var value))
+                {
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "timeout":
+                            auth.Timeout = ParseInt(value);
+                            break;
+                        case "user":
+                            auth.User = UnquoteString(value);
+                            break;
+                        case "password":
+                            auth.Password = UnquoteString(value);
+                            break;
+                        case "account":
+                            auth.Account = UnquoteString(value);
+                            break;
+                        case "token":
+                            auth.Token = UnquoteString(value);
+                            break;
+                        case "users":
+                            // Handle single-line arrays: users: [ {...} ]
+                            auth.Users = ParseUsersArray(value);
+                            break;
+                    }
+                    context.MoveNext();
+                }
+                else
+                {
+                    context.MoveNext();
+                }
             }
         }
 
@@ -826,10 +1014,20 @@ public class NatsConfigParser
                 }
                 context.MoveNext();
             }
-            else if (TryParseBlockStart(line, out var blockName) && blockName.ToLowerInvariant() == "tls")
+            else if (TryParseBlockStart(line, out var blockName))
             {
-                var blockContent = ExtractBlock(context);
-                remote.Tls = ParseTlsBlock(blockContent);
+                switch (blockName.ToLowerInvariant())
+                {
+                    case "tls":
+                        var tlsContent = ExtractBlock(context);
+                        remote.Tls = ParseTlsBlock(tlsContent);
+                        break;
+                    case "urls":
+                        // Handle multi-line urls array
+                        var urlsContent = line.Contains('[') ? ExtractArray(context) : ExtractBlock(context);
+                        remote.Urls = ParseStringArray(urlsContent);
+                        break;
+                }
             }
             else
             {
@@ -851,8 +1049,11 @@ public class NatsConfigParser
         if (value.EndsWith("]"))
             value = value.Substring(0, value.Length - 1);
 
-        // Split by comma and clean up
-        var items = value.Split(',');
+        // Check if this is a comma-separated or newline-separated array
+        char separator = value.Contains(',') ? ',' : '\n';
+
+        // Split and clean up
+        var items = value.Split(separator);
         foreach (var item in items)
         {
             var cleaned = UnquoteString(item.Trim());
