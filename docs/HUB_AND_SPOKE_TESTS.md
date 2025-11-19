@@ -498,17 +498,29 @@ The integration tests verify that permissions are enforced:
 1. **Hub-to-Leaf**: Only messages on exported subjects are received
 2. **Leaf-to-Hub**: Only messages on imported subjects are received
 3. **Dynamic Changes**: Permission changes apply immediately via hot reload
-4. **Wildcard Subjects**: Both single-token (`*`) and multi-token (`>`) wildcards work correctly
+4. **Wildcard Subjects**: Multi-token (`>`) wildcards work correctly. Single-token (`*`) wildcards have known limitations (see below)
 
 ### Known Limitations
 
-As of the current implementation, there are edge cases with dynamic subject changes:
+As of the current implementation, there are edge cases with dynamic subject changes and wildcard permissions:
 
 1. **Adding Export Subjects**: In some cases, messages may be received before the subject is officially exported
 2. **Removing Export Subjects**: In some cases, messages may still be received after subject removal
 3. **Concurrent Modifications**: Rapid concurrent subject changes may not always synchronize properly
+4. **Single-Token Wildcards (*)**: Single-token wildcards in export subjects (e.g., `events.*.created`) don't work reliably with authenticated leaf node connections. Some messages may not be delivered. **Workaround**: Use multi-token wildcards (`>`) instead, e.g., `events.>` instead of `events.*.created`
 
-These limitations are under investigation and appear to be related to how NATS server handles dynamic permission changes on leaf node connections.
+These limitations are under investigation and appear to be related to how NATS server handles dynamic permission changes and wildcard pattern matching on leaf node connections.
+
+**Related NATS Issues**:
+- https://github.com/nats-io/nats-server/issues/2949
+- https://github.com/nats-io/nats-server/issues/4608
+
+**Tests Affected** (currently disabled):
+- Bidirectional message flow (intermittent timing issue)
+- Dynamic subject changes: Add new export subject
+- Dynamic subject changes: Remove export subject
+- Concurrent leaf node subject modifications
+- Wildcard subjects: Single-token (*) and multi-token (>) wildcards
 
 ### Troubleshooting
 
