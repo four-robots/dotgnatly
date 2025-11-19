@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DotGnatly.Core.Configuration;
 using DotGnatly.Core.Events;
 using DotGnatly.Core.Interfaces;
@@ -1484,7 +1485,8 @@ public class NatsController : IBrokerController, IDisposable
         var options = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
         return JsonSerializer.Serialize(config, options);

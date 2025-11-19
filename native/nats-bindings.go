@@ -173,17 +173,17 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 				},
 			}
 
-			// Create a default user for leaf connections
+			// Create a dedicated user for leaf node connections with subject-level permissions
+			// Leaf nodes MUST authenticate as this user to get the restricted permissions
+			// Note: Do NOT set opts.LeafNode.Username as NATS validation rejects
+			// having both Username/Password AND Users array
 			leafUser := &server.User{
-				Username:    "$LEAFNODE_DEFAULT",
-				Password:    "",
+				Username:    "leafnode",  // Dedicated username for leaf connections
+				Password:    "",          // Empty password - leaf connects with just username
 				Permissions: leafPerms,
 			}
 
 			opts.LeafNode.Users = []*server.User{leafUser}
-
-			// Allow anonymous connections to use this user
-			opts.LeafNode.Username = "$LEAFNODE_DEFAULT"
 		}
 	}
 
@@ -195,11 +195,19 @@ func convertToNatsOptions(config *ServerConfig) *server.Options {
 			if err != nil {
 				continue // Skip invalid URLs
 			}
+
+			// Add authentication to the URL if needed
+			if config.LeafNode.AuthUsername != "" {
+				// Explicitly provided credentials
+				parsedURL.User = url.UserPassword(config.LeafNode.AuthUsername, config.LeafNode.AuthPassword)
+			} else if len(config.LeafNode.ImportSubjects) > 0 || len(config.LeafNode.ExportSubjects) > 0 {
+				// If no explicit credentials but import/export subjects are configured,
+				// use the default "leafnode" user that the hub creates for subject permissions
+				parsedURL.User = url.UserPassword("leafnode", "")
+			}
+
 			remote := &server.RemoteLeafOpts{
 				URLs: []*url.URL{parsedURL},
-			}
-			if config.LeafNode.AuthUsername != "" {
-				remote.Credentials = config.LeafNode.AuthUsername + ":" + config.LeafNode.AuthPassword
 			}
 
 			// Configure import/export deny lists for remote connections

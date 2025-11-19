@@ -362,11 +362,190 @@ Typical test execution times:
 
 Total suite execution: ~25-30 seconds
 
+## Leaf Node Authentication
+
+### Overview
+
+When import/export subjects are configured on leaf nodes, DotGnatly automatically sets up authentication to enforce subject-level permissions. This ensures that leaf nodes can only publish and subscribe to the subjects explicitly allowed by the hub configuration.
+
+### How It Works
+
+#### Hub Side (Server Accepting Leaf Connections)
+
+When a hub server has `ExportSubjects` or `ImportSubjects` configured:
+
+1. **User Creation**: A dedicated user account named `"leafnode"` is automatically created
+2. **Permission Assignment**: The user is configured with restricted permissions:
+   - `Subscribe.Allow`: Set to the hub's `ExportSubjects` (what leaves can subscribe to)
+   - `Publish.Allow`: Set to the hub's `ImportSubjects` (what leaves can publish to hub)
+3. **Authentication Requirement**: The user is added to `opts.LeafNode.Users` array
+
+**Implementation** (native/nats-bindings.go:166-187):
+```go
+leafPerms := &server.Permissions{
+    Publish: &server.SubjectPermission{
+        Allow: config.LeafNode.ImportSubjects, // What leaves can publish
+    },
+    Subscribe: &server.SubjectPermission{
+        Allow: config.LeafNode.ExportSubjects, // What leaves can subscribe
+    },
+}
+
+leafUser := &server.User{
+    Username:    "leafnode",  // Named user for authentication
+    Password:    "",          // Empty password (passwordless auth)
+    Permissions: leafPerms,
+}
+
+opts.LeafNode.Users = []*server.User{leafUser}
+```
+
+#### Leaf Side (Client Connecting to Hub)
+
+When a leaf node has import/export subjects configured:
+
+1. **Automatic Authentication**: If no explicit credentials are provided via `AuthUsername`, the leaf automatically authenticates using the `"leafnode"` user
+2. **URL-Based Credentials**: Credentials are embedded in the connection URL using `url.UserPassword("leafnode", "")`
+3. **Permission Enforcement**: NATS server enforces the subscribe/publish restrictions
+
+**Implementation** (native/nats-bindings.go:199-207):
+```go
+if config.LeafNode.AuthUsername != "" {
+    // Explicitly provided credentials
+    parsedURL.User = url.UserPassword(config.LeafNode.AuthUsername, config.LeafNode.AuthPassword)
+} else if len(config.LeafNode.ImportSubjects) > 0 || len(config.LeafNode.ExportSubjects) > 0 {
+    // Auto-authenticate with default "leafnode" user
+    parsedURL.User = url.UserPassword("leafnode", "")
+}
+```
+
+### Key Design Decisions
+
+#### Why Named User Instead of Anonymous?
+
+Early implementations used an empty username (`Username: ""`), but this caused permissions to not be enforced. NATS treats empty username users as anonymous connections without proper permission validation.
+
+**Solution**: Use a named user (`"leafnode"`) to ensure NATS enforces the configured permissions.
+
+#### Why Not Use Both Username and Users Array?
+
+NATS server validation rejects configurations that have both:
+- `opts.LeafNode.Username` (single default user)
+- `opts.LeafNode.Users` (array of users)
+
+**Error**: `"can not have a single user/pass and a users array"`
+
+**Solution**: Only use the `Users` array on the hub side, and embed authentication in the connection URL on the leaf side.
+
+#### Why Empty Password?
+
+Leaf node connections are typically within trusted internal networks. Empty password simplifies configuration while still providing subject-level permission enforcement through the user account.
+
+For external/untrusted networks, you can provide explicit credentials:
+```csharp
+var leafConfig = new BrokerConfiguration
+{
+    Port = 4223,
+    LeafNode = new LeafNodeConfiguration
+    {
+        RemoteURLs = new List<string> { "nats://hub:7422" },
+        AuthUsername = "secure-leaf",
+        AuthPassword = "strong-password",
+        ImportSubjects = new List<string> { "hub.>" }
+    }
+};
+```
+
+### Permission Mapping
+
+The mapping between hub configuration and leaf permissions:
+
+| Hub Config | Leaf Permission | Description |
+|------------|-----------------|-------------|
+| `ExportSubjects` | Subscribe.Allow | Subjects the leaf can subscribe to (hub → leaf flow) |
+| `ImportSubjects` | Publish.Allow | Subjects the leaf can publish to (leaf → hub flow) |
+
+**Example**:
+```csharp
+// Hub configuration
+var hubConfig = new BrokerConfiguration
+{
+    Port = 4222,
+    LeafNode = new LeafNodeConfiguration
+    {
+        Port = 7422,
+        ExportSubjects = new List<string> { "hub.events.>" },
+        ImportSubjects = new List<string> { "leaf.metrics.>" }
+    }
+};
+
+// Leaf authentication will have:
+// - Subscribe.Allow = ["hub.events.>"]
+// - Publish.Allow = ["leaf.metrics.>"]
+```
+
+### Security Considerations
+
+1. **Subject Wildcards**: Be careful with wildcards like `>` (all subjects) as they grant broad permissions
+2. **Internal Networks**: Default passwordless authentication assumes trusted internal networks
+3. **External Deployments**: For internet-facing deployments, use explicit username/password via `AuthUsername` and `AuthPassword`
+4. **TLS**: Consider adding TLS encryption for sensitive data even on internal networks
+
+### Testing Authentication
+
+The integration tests verify that permissions are enforced:
+
+1. **Hub-to-Leaf**: Only messages on exported subjects are received
+2. **Leaf-to-Hub**: Only messages on imported subjects are received
+3. **Dynamic Changes**: Permission changes apply immediately via hot reload
+4. **Wildcard Subjects**: Both single-token (`*`) and multi-token (`>`) wildcards work correctly
+
+### Known Limitations
+
+As of the current implementation, there are edge cases with dynamic subject changes:
+
+1. **Adding Export Subjects**: In some cases, messages may be received before the subject is officially exported
+2. **Removing Export Subjects**: In some cases, messages may still be received after subject removal
+3. **Concurrent Modifications**: Rapid concurrent subject changes may not always synchronize properly
+
+These limitations are under investigation and appear to be related to how NATS server handles dynamic permission changes on leaf node connections.
+
+### Troubleshooting
+
+#### Messages Not Flowing
+
+**Symptom**: Published messages aren't received on the other side
+
+**Possible Causes**:
+1. Export/Import subject mismatch
+2. Wildcard pattern doesn't match
+3. Authentication failing silently
+
+**Solutions**:
+- Verify hub's `ExportSubjects` match leaf's expected subjects
+- Verify leaf's `ExportSubjects` match hub's `ImportSubjects`
+- Check NATS server logs for authentication errors
+- Test with wildcard `>` first, then restrict to specific patterns
+
+#### Permission Denied Errors
+
+**Symptom**: Connection succeeds but publishes/subscribes fail
+
+**Possible Causes**:
+1. Subject not in allowed list
+2. Typo in subject pattern
+3. Case sensitivity issues
+
+**Solutions**:
+- Double-check subject patterns match exactly
+- NATS subjects are case-sensitive
+- Use monitoring endpoint `GetLeafz()` to inspect leaf permissions
+
 ## Future Enhancements
 
 Potential additions to the test suite:
 
-1. **Authentication**: Test leaf nodes with username/password
+1. ~~**Authentication**: Test leaf nodes with username/password~~ ✅ **IMPLEMENTED** - Automatic authentication with subject permissions
 2. **TLS**: Test encrypted leaf node connections
 3. **Resilience**: Test automatic reconnection when hub restarts
 4. **Performance**: Measure message throughput in hub-and-spoke topology
@@ -374,6 +553,7 @@ Potential additions to the test suite:
 6. **Subject Conflicts**: Test overlapping import/export patterns
 7. **Queue Groups**: Test queue subscribers across hub and leaf
 8. **Request-Reply**: Test request-reply patterns across topology
+9. **Custom Authentication**: Test with explicit username/password beyond default "leafnode" user
 
 ## Related Documentation
 
