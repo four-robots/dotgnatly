@@ -1,254 +1,241 @@
 using DotGnatly.Core.Configuration;
 using DotGnatly.Core.Events;
 using DotGnatly.Nats.Implementation;
+using Xunit;
 
 namespace DotGnatly.IntegrationTests;
 
 /// <summary>
 /// Tests the event system for configuration changes.
 /// </summary>
-public class EventSystemTests : IIntegrationTest
+public class EventSystemTests
 {
-    public async Task RunAsync(TestResults results)
+    [Fact]
+    public async Task TestConfigurationChangingEventFires()
     {
-        // Test 1: ConfigurationChanging event fires
-        await results.AssertAsync(
-            "ConfigurationChanging event fires before changes",
-            async () =>
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        bool eventFired = false;
+        server.ConfigurationChanging += (sender, args) =>
+        {
+            eventFired = true;
+        };
+
+        await server.ApplyChangesAsync(c => c.Debug = true);
+        await server.ShutdownAsync();
+
+        Assert.True(eventFired, "ConfigurationChanging event should have fired");
+    }
+
+    [Fact]
+    public async Task TestConfigurationChangedEventFires()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        bool eventFired = false;
+        server.ConfigurationChanged += (sender, args) =>
+        {
+            eventFired = true;
+        };
+
+        await server.ApplyChangesAsync(c => c.Debug = true);
+        await server.ShutdownAsync();
+
+        Assert.True(eventFired, "ConfigurationChanged event should have fired");
+    }
+
+    [Fact]
+    public async Task TestConfigurationChangingCanCancelChanges()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, Debug = false });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        server.ConfigurationChanging += (sender, args) =>
+        {
+            args.CancelChange("Test cancellation");
+        };
+
+        var changeResult = await server.ApplyChangesAsync(c => c.Debug = true);
+
+        var info = await server.GetInfoAsync();
+        await server.ShutdownAsync();
+
+        Assert.False(changeResult.Success, "Change should have been cancelled");
+        Assert.False(info.CurrentConfig.Debug, "Debug should still be false");
+    }
+
+    [Fact]
+    public async Task TestConfigurationChangedEventProvidesCorrectDiff()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, Debug = false });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        ConfigurationChangedEventArgs? capturedArgs = null;
+        server.ConfigurationChanged += (sender, args) =>
+        {
+            capturedArgs = args;
+        };
+
+        await server.ApplyChangesAsync(c => c.Debug = true);
+        await server.ShutdownAsync();
+
+        Assert.NotNull(capturedArgs);
+        Assert.True(capturedArgs.Diff.Changes.Any(ch => ch.PropertyName == "Debug"), "Diff should contain Debug property change");
+    }
+
+    [Fact]
+    public async Task TestMultipleEventHandlersAllFire()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        int handler1Count = 0;
+        int handler2Count = 0;
+        int handler3Count = 0;
+
+        server.ConfigurationChanged += (s, e) => handler1Count++;
+        server.ConfigurationChanged += (s, e) => handler2Count++;
+        server.ConfigurationChanged += (s, e) => handler3Count++;
+
+        await server.ApplyChangesAsync(c => c.Debug = true);
+        await server.ShutdownAsync();
+
+        Assert.Equal(1, handler1Count);
+        Assert.Equal(1, handler2Count);
+        Assert.Equal(1, handler3Count);
+    }
+
+    [Fact]
+    public async Task TestEventProvidesAccessToOldAndNewConfigurations()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, MaxPayload = 1024 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        bool correctValues = false;
+        server.ConfigurationChanging += (sender, args) =>
+        {
+            correctValues = args.Current.MaxPayload == 1024 &&
+                           args.Proposed.MaxPayload == 2048;
+        };
+
+        await server.ApplyChangesAsync(c => c.MaxPayload = 2048);
+        await server.ShutdownAsync();
+
+        Assert.True(correctValues, "Event should provide correct old and new values");
+    }
+
+    [Fact]
+    public async Task TestEventsFireForLeafNodeSubjectChanges()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                Port = 17422,
+                ImportSubjects = new List<string> { "old.>" }
+            }
+        });
 
-                bool eventFired = false;
-                server.ConfigurationChanging += (sender, args) =>
-                {
-                    eventFired = true;
-                };
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                await server.ApplyChangesAsync(c => c.Debug = true);
-                await server.ShutdownAsync();
+        bool changingFired = false;
+        bool changedFired = false;
 
-                return eventFired;
-            });
+        server.ConfigurationChanging += (s, e) => changingFired = true;
+        server.ConfigurationChanged += (s, e) => changedFired = true;
 
-        // Test 2: ConfigurationChanged event fires
-        await results.AssertAsync(
-            "ConfigurationChanged event fires after changes",
-            async () =>
+        await server.AddLeafNodeImportSubjectsAsync("new.>");
+        await server.ShutdownAsync();
+
+        Assert.True(changingFired, "ConfigurationChanging should have fired");
+        Assert.True(changedFired, "ConfigurationChanged should have fired");
+    }
+
+    [Fact]
+    public async Task TestEventCancellationPreventsConfigurationChange()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                ImportSubjects = new List<string> { "original.>" }
+            }
+        });
 
-                bool eventFired = false;
-                server.ConfigurationChanged += (sender, args) =>
-                {
-                    eventFired = true;
-                };
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                await server.ApplyChangesAsync(c => c.Debug = true);
-                await server.ShutdownAsync();
+        server.ConfigurationChanging += (sender, args) =>
+        {
+            args.CancelChange("Not allowed");
+        };
 
-                return eventFired;
-            });
+        await server.SetLeafNodeImportSubjectsAsync(new[] { "modified.>" });
 
-        // Test 3: Cancel configuration change via event
-        await results.AssertAsync(
-            "ConfigurationChanging event can cancel changes",
-            async () =>
-            {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, Debug = false });
+        var info = await server.GetInfoAsync();
+        await server.ShutdownAsync();
 
-                server.ConfigurationChanging += (sender, args) =>
-                {
-                    args.CancelChange("Test cancellation");
-                };
+        Assert.Contains("original.>", info.CurrentConfig.LeafNode.ImportSubjects);
+        Assert.DoesNotContain("modified.>", info.CurrentConfig.LeafNode.ImportSubjects);
+    }
 
-                var result = await server.ApplyChangesAsync(c => c.Debug = true);
+    [Fact]
+    public async Task TestEventsFireInCorrectOrder()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var eventOrder = new List<string>();
 
-                return !result.Success && info.CurrentConfig.Debug == false;
-            });
+        server.ConfigurationChanging += (s, e) => eventOrder.Add("Changing");
+        server.ConfigurationChanged += (s, e) => eventOrder.Add("Changed");
 
-        // Test 4: Event provides correct diff information
-        await results.AssertAsync(
-            "ConfigurationChanged event provides correct diff",
-            async () =>
-            {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, Debug = false });
+        await server.ApplyChangesAsync(c => c.Debug = true);
+        await server.ShutdownAsync();
 
-                ConfigurationChangedEventArgs? capturedArgs = null;
-                server.ConfigurationChanged += (sender, args) =>
-                {
-                    capturedArgs = args;
-                };
+        Assert.Equal(2, eventOrder.Count);
+        Assert.Equal("Changing", eventOrder[0]);
+        Assert.Equal("Changed", eventOrder[1]);
+    }
 
-                await server.ApplyChangesAsync(c => c.Debug = true);
-                await server.ShutdownAsync();
+    [Fact]
+    public async Task TestEventsFireIndependentlyForMultipleServers()
+    {
+        using var server1 = new NatsController();
+        using var server2 = new NatsController();
 
-                return capturedArgs != null &&
-                       capturedArgs.Diff.Changes.Any(ch => ch.PropertyName == "Debug");
-            });
+        var result1 = await server1.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        var result2 = await server2.ConfigureAsync(new BrokerConfiguration { Port = 14223 });
 
-        // Test 5: Multiple event handlers
-        await results.AssertAsync(
-            "Multiple event handlers all fire",
-            async () =>
-            {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result1.Success, $"Failed to start server1: {result1.ErrorMessage}");
+        Assert.True(result2.Success, $"Failed to start server2: {result2.ErrorMessage}");
 
-                int handler1Count = 0;
-                int handler2Count = 0;
-                int handler3Count = 0;
+        int server1Events = 0;
+        int server2Events = 0;
 
-                server.ConfigurationChanged += (s, e) => handler1Count++;
-                server.ConfigurationChanged += (s, e) => handler2Count++;
-                server.ConfigurationChanged += (s, e) => handler3Count++;
+        server1.ConfigurationChanged += (s, e) => server1Events++;
+        server2.ConfigurationChanged += (s, e) => server2Events++;
 
-                await server.ApplyChangesAsync(c => c.Debug = true);
-                await server.ShutdownAsync();
+        await server1.ApplyChangesAsync(c => c.Debug = true);
 
-                return handler1Count == 1 && handler2Count == 1 && handler3Count == 1;
-            });
+        await Task.Delay(50); // Small delay to ensure event processing
 
-        // Test 6: Event handler can access old and new values
-        await results.AssertAsync(
-            "Event provides access to old and new configurations",
-            async () =>
-            {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222, MaxPayload = 1024 });
+        await server1.ShutdownAsync();
+        await server2.ShutdownAsync();
 
-                bool correctValues = false;
-                server.ConfigurationChanging += (sender, args) =>
-                {
-                    correctValues = args.Current.MaxPayload == 1024 &&
-                                   args.Proposed.MaxPayload == 2048;
-                };
-
-                await server.ApplyChangesAsync(c => c.MaxPayload = 2048);
-                await server.ShutdownAsync();
-
-                return correctValues;
-            });
-
-        // Test 7: Events fire for leaf node subject changes
-        await results.AssertAsync(
-            "Events fire for leaf node subject changes",
-            async () =>
-            {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "old.>" }
-                    }
-                });
-
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
-
-                bool changingFired = false;
-                bool changedFired = false;
-
-                server.ConfigurationChanging += (s, e) => changingFired = true;
-                server.ConfigurationChanged += (s, e) => changedFired = true;
-
-                await server.AddLeafNodeImportSubjectsAsync("new.>");
-                await server.ShutdownAsync();
-
-                return changingFired && changedFired;
-            });
-
-        // Test 8: Event cancellation prevents configuration change
-        await results.AssertAsync(
-            "Cancelled configuration remains unchanged",
-            async () =>
-            {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        ImportSubjects = new List<string> { "original.>" }
-                    }
-                });
-
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
-
-                server.ConfigurationChanging += (sender, args) =>
-                {
-                    args.CancelChange("Not allowed");
-                };
-
-                await server.SetLeafNodeImportSubjectsAsync(new[] { "modified.>" });
-
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
-
-                return info.CurrentConfig.LeafNode.ImportSubjects.Contains("original.>") &&
-                       !info.CurrentConfig.LeafNode.ImportSubjects.Contains("modified.>");
-            });
-
-        // Test 9: Events fire in correct order
-        await results.AssertAsync(
-            "Events fire in correct order (Changing then Changed)",
-            async () =>
-            {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
-
-                var eventOrder = new List<string>();
-
-                server.ConfigurationChanging += (s, e) => eventOrder.Add("Changing");
-                server.ConfigurationChanged += (s, e) => eventOrder.Add("Changed");
-
-                await server.ApplyChangesAsync(c => c.Debug = true);
-                await server.ShutdownAsync();
-
-                return eventOrder.Count == 2 &&
-                       eventOrder[0] == "Changing" &&
-                       eventOrder[1] == "Changed";
-            });
-
-        // Test 10: Events for multiple concurrent servers
-        await results.AssertAsync(
-            "Events fire independently for multiple servers",
-            async () =>
-            {
-                using var server1 = new NatsController();
-                using var server2 = new NatsController();
-
-                await server1.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
-                await server2.ConfigureAsync(new BrokerConfiguration { Port = 14223 });
-
-                int server1Events = 0;
-                int server2Events = 0;
-
-                server1.ConfigurationChanged += (s, e) => server1Events++;
-                server2.ConfigurationChanged += (s, e) => server2Events++;
-
-                await server1.ApplyChangesAsync(c => c.Debug = true);
-
-                await Task.Delay(50); // Small delay to ensure event processing
-
-                await server1.ShutdownAsync();
-                await server2.ShutdownAsync();
-
-                return server1Events == 1 && server2Events == 0;
-            });
+        Assert.Equal(1, server1Events);
+        Assert.Equal(0, server2Events);
     }
 }

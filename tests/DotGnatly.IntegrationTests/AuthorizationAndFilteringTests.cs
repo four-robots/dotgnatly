@@ -4,37 +4,21 @@ using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
 using NATS.Net;
 using NATS.Client.Core;
+using Xunit;
 
 namespace DotGnatly.IntegrationTests;
-
-/// <summary>
-/// Integration test suite wrapper for account authorization and subject filtering tests.
-/// </summary>
-public class AuthorizationAndFilteringTestSuite : IIntegrationTest
-{
-    public async Task RunAsync(TestResults results)
-    {
-        await results.AssertAsync("Basic Authentication", AuthorizationAndFilteringTests.TestBasicAuthentication);
-        await results.AssertAsync("Invalid Credentials Rejected", AuthorizationAndFilteringTests.TestInvalidCredentialsRejected);
-        await results.AssertAsync("Token Authentication", AuthorizationAndFilteringTests.TestTokenAuthentication);
-        await results.AssertAsync("Subject Wildcards", AuthorizationAndFilteringTests.TestSubjectWildcards);
-        await results.AssertAsync("Subject Pattern Matching", AuthorizationAndFilteringTests.TestSubjectPatternMatching);
-        await results.AssertAsync("Request-Reply Pattern", AuthorizationAndFilteringTests.TestRequestReplyPattern);
-        await results.AssertAsync("Multi-Level Wildcards", AuthorizationAndFilteringTests.TestMultiLevelWildcards);
-        await results.AssertAsync("Queue Groups", AuthorizationAndFilteringTests.TestQueueGroups);
-    }
-}
 
 /// <summary>
 /// Integration tests for NATS server account authorization and subject filtering.
 /// Tests client connectivity using NATS.Net package.
 /// </summary>
-public static class AuthorizationAndFilteringTests
+public class AuthorizationAndFilteringTests
 {
     /// <summary>
     /// Tests basic username/password authentication.
     /// </summary>
-    public static async Task<bool> TestBasicAuthentication()
+    [Fact]
+    public async Task TestBasicAuthentication()
     {
         Console.WriteLine("\n=== Testing Basic Authentication ===");
 
@@ -54,11 +38,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -100,26 +80,11 @@ public static class AuthorizationAndFilteringTests
             var timeoutTask = Task.Delay(5000);
             var completedTask = await Task.WhenAny(subscriptionTask, timeoutTask);
 
-            if (completedTask == timeoutTask)
-            {
-                Console.WriteLine("❌ Timeout waiting for messages");
-                return false;
-            }
-
-            if (receivedMessages.Count != 3)
-            {
-                Console.WriteLine($"❌ Expected 3 messages, received {receivedMessages.Count}");
-                return false;
-            }
+            Assert.NotEqual(timeoutTask, completedTask);
+            Assert.Equal(3, receivedMessages.Count);
 
             Console.WriteLine("✓ Successfully published and received 3 messages");
             Console.WriteLine("✓ Basic authentication test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Basic authentication test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -130,7 +95,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests that invalid credentials are properly rejected.
     /// </summary>
-    public static async Task<bool> TestInvalidCredentialsRejected()
+    [Fact]
+    public async Task TestInvalidCredentialsRejected()
     {
         Console.WriteLine("\n=== Testing Invalid Credentials Rejection ===");
 
@@ -149,17 +115,14 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
         try
         {
             // Try to connect with wrong password
+            var wrongPasswordRejected = false;
             try
             {
                 var wrongOpts = new NatsOpts
@@ -173,15 +136,16 @@ public static class AuthorizationAndFilteringTests
                 };
                 await using var nats = new NatsClient(wrongOpts);
                 await nats.PublishAsync("test", "test"); // Try to use connection
-                Console.WriteLine("❌ Connection should have been rejected with invalid credentials");
-                return false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"✓ Connection properly rejected: {ex.Message.Substring(0, Math.Min(60, ex.Message.Length))}...");
+                wrongPasswordRejected = true;
             }
+            Assert.True(wrongPasswordRejected, "Connection should have been rejected with invalid credentials");
 
             // Try to connect with no credentials
+            var noCredentialsRejected = false;
             try
             {
                 var noAuthOpts = new NatsOpts
@@ -190,21 +154,15 @@ public static class AuthorizationAndFilteringTests
                 };
                 await using var nats = new NatsClient(noAuthOpts);
                 await nats.PublishAsync("test", "test"); // Try to use connection
-                Console.WriteLine("❌ Connection should have been rejected without credentials");
-                return false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"✓ Connection properly rejected without credentials: {ex.Message.Substring(0, Math.Min(60, ex.Message.Length))}...");
+                noCredentialsRejected = true;
             }
+            Assert.True(noCredentialsRejected, "Connection should have been rejected without credentials");
 
             Console.WriteLine("✓ Invalid credentials rejection test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Invalid credentials test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -215,7 +173,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests token-based authentication.
     /// </summary>
-    public static async Task<bool> TestTokenAuthentication()
+    [Fact]
+    public async Task TestTokenAuthentication()
     {
         Console.WriteLine("\n=== Testing Token Authentication ===");
 
@@ -233,11 +192,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -277,26 +232,11 @@ public static class AuthorizationAndFilteringTests
             var timeoutTask = Task.Delay(5000);
             var completedTask = await Task.WhenAny(subscriptionTask, timeoutTask);
 
-            if (completedTask == timeoutTask)
-            {
-                Console.WriteLine("❌ Timeout waiting for messages");
-                return false;
-            }
-
-            if (receivedMessages.Count != 2)
-            {
-                Console.WriteLine($"❌ Expected 2 messages, received {receivedMessages.Count}");
-                return false;
-            }
+            Assert.NotEqual(timeoutTask, completedTask);
+            Assert.Equal(2, receivedMessages.Count);
 
             Console.WriteLine("✓ Published and received messages with token auth");
             Console.WriteLine("✓ Token authentication test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Token authentication test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -307,7 +247,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests subject wildcards (* matches single token).
     /// </summary>
-    public static async Task<bool> TestSubjectWildcards()
+    [Fact]
+    public async Task TestSubjectWildcards()
     {
         Console.WriteLine("\n=== Testing Subject Wildcards ===");
 
@@ -321,11 +262,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -371,27 +308,12 @@ public static class AuthorizationAndFilteringTests
             }
 
             // Should receive exactly 3 messages (orders.create, orders.update, orders.delete)
-            if (receivedMessages.Count != 3)
-            {
-                Console.WriteLine($"❌ Expected 3 messages, got {receivedMessages.Count}");
-                return false;
-            }
-
-            if (!receivedMessages.Contains("orders.create:order1") ||
-                !receivedMessages.Contains("orders.update:order2") ||
-                !receivedMessages.Contains("orders.delete:order3"))
-            {
-                Console.WriteLine("❌ Did not receive expected messages");
-                return false;
-            }
+            Assert.Equal(3, receivedMessages.Count);
+            Assert.Contains("orders.create:order1", receivedMessages);
+            Assert.Contains("orders.update:order2", receivedMessages);
+            Assert.Contains("orders.delete:order3", receivedMessages);
 
             Console.WriteLine("✓ Subject wildcards test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Subject wildcards test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -402,7 +324,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests multi-level wildcards (> matches multiple tokens).
     /// </summary>
-    public static async Task<bool> TestMultiLevelWildcards()
+    [Fact]
+    public async Task TestMultiLevelWildcards()
     {
         Console.WriteLine("\n=== Testing Multi-Level Wildcards ===");
 
@@ -416,11 +339,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -465,29 +384,14 @@ public static class AuthorizationAndFilteringTests
                 Console.WriteLine($"    {subject}");
             }
 
-            if (receivedMessages.Count != 5)
-            {
-                Console.WriteLine($"❌ Expected 5 messages, got {receivedMessages.Count}");
-                return false;
-            }
-
-            if (!receivedMessages.Contains("orders.create") ||
-                !receivedMessages.Contains("orders.create.batch") ||
-                !receivedMessages.Contains("orders.update.status") ||
-                !receivedMessages.Contains("orders.delete.bulk.confirmed") ||
-                !receivedMessages.Contains("orders.query.filter.advanced"))
-            {
-                Console.WriteLine("❌ Did not receive expected messages");
-                return false;
-            }
+            Assert.Equal(5, receivedMessages.Count);
+            Assert.Contains("orders.create", receivedMessages);
+            Assert.Contains("orders.create.batch", receivedMessages);
+            Assert.Contains("orders.update.status", receivedMessages);
+            Assert.Contains("orders.delete.bulk.confirmed", receivedMessages);
+            Assert.Contains("orders.query.filter.advanced", receivedMessages);
 
             Console.WriteLine("✓ Multi-level wildcards test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Multi-level wildcards test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -498,7 +402,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests complex subject pattern matching with multiple subscribers.
     /// </summary>
-    public static async Task<bool> TestSubjectPatternMatching()
+    [Fact]
+    public async Task TestSubjectPatternMatching()
     {
         Console.WriteLine("\n=== Testing Subject Pattern Matching ===");
 
@@ -512,11 +417,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -576,33 +477,16 @@ public static class AuthorizationAndFilteringTests
             Console.WriteLine($"  All-events subscriber received: {allMessages.Count} messages");
 
             // Specific subscriber should receive only 1 message
-            if (specificMessages.Count != 1 || !specificMessages.Contains("events.user.created"))
-            {
-                Console.WriteLine($"❌ Specific subscriber expected 1 message, got {specificMessages.Count}");
-                return false;
-            }
+            Assert.Single(specificMessages);
+            Assert.Contains("events.user.created", specificMessages);
 
             // Wildcard subscriber should receive 3 messages (all events.user.*)
-            if (wildcardMessages.Count != 3)
-            {
-                Console.WriteLine($"❌ Wildcard subscriber expected 3 messages, got {wildcardMessages.Count}");
-                return false;
-            }
+            Assert.Equal(3, wildcardMessages.Count);
 
             // All-events subscriber should receive all 4 messages
-            if (allMessages.Count != 4)
-            {
-                Console.WriteLine($"❌ All-events subscriber expected 4 messages, got {allMessages.Count}");
-                return false;
-            }
+            Assert.Equal(4, allMessages.Count);
 
             Console.WriteLine("✓ Subject pattern matching test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Subject pattern matching test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -613,7 +497,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests request-reply pattern with subject filtering.
     /// </summary>
-    public static async Task<bool> TestRequestReplyPattern()
+    [Fact]
+    public async Task TestRequestReplyPattern()
     {
         Console.WriteLine("\n=== Testing Request-Reply Pattern ===");
 
@@ -627,11 +512,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -668,19 +549,9 @@ public static class AuthorizationAndFilteringTests
 
             Console.WriteLine($"  Client received reply: {reply.Data}");
 
-            if (reply.Data != "Echo: Hello, Service!")
-            {
-                Console.WriteLine($"❌ Expected 'Echo: Hello, Service!', got '{reply.Data}'");
-                return false;
-            }
+            Assert.Equal("Echo: Hello, Service!", reply.Data);
 
             Console.WriteLine("✓ Request-reply pattern test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Request-reply pattern test failed: {ex.Message}");
-            return false;
         }
         finally
         {
@@ -691,7 +562,8 @@ public static class AuthorizationAndFilteringTests
     /// <summary>
     /// Tests queue groups for load balancing subscribers.
     /// </summary>
-    public static async Task<bool> TestQueueGroups()
+    [Fact]
+    public async Task TestQueueGroups()
     {
         Console.WriteLine("\n=== Testing Queue Groups ===");
 
@@ -705,11 +577,7 @@ public static class AuthorizationAndFilteringTests
         };
 
         var result = await controller.ConfigureAsync(config);
-        if (!result.Success)
-        {
-            Console.WriteLine($"❌ Failed to start server: {result.ErrorMessage}");
-            return false;
-        }
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
         await Task.Delay(500);
 
@@ -775,18 +643,12 @@ public static class AuthorizationAndFilteringTests
             Console.WriteLine($"  Total received: {totalReceived} messages");
 
             // Each message should be received by exactly one worker
-            if (totalReceived != 12)
-            {
-                Console.WriteLine($"❌ Expected total of 12 messages, got {totalReceived}");
-                return false;
-            }
+            Assert.Equal(12, totalReceived);
 
             // Messages should be distributed (not all to one worker)
-            if (worker1Messages.Count == 12 || worker2Messages.Count == 12 || worker3Messages.Count == 12)
-            {
-                Console.WriteLine("❌ Messages not distributed across queue group members");
-                return false;
-            }
+            Assert.True(worker1Messages.Count < 12, "Messages not distributed across queue group members");
+            Assert.True(worker2Messages.Count < 12, "Messages not distributed across queue group members");
+            Assert.True(worker3Messages.Count < 12, "Messages not distributed across queue group members");
 
             // Each worker should have received at least one message (with 12 messages and 3 workers)
             if (worker1Messages.Count == 0 || worker2Messages.Count == 0 || worker3Messages.Count == 0)
@@ -796,12 +658,6 @@ public static class AuthorizationAndFilteringTests
             }
 
             Console.WriteLine("✓ Queue groups test passed");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Queue groups test failed: {ex.Message}");
-            return false;
         }
         finally
         {

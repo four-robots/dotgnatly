@@ -1,228 +1,212 @@
 using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
+using Xunit;
 
 namespace DotGnatly.IntegrationTests;
 
 /// <summary>
 /// Tests concurrent operations on brokers.
 /// </summary>
-public class ConcurrentOperationTests : IIntegrationTest
+public class ConcurrentOperationTests
 {
-    public async Task RunAsync(TestResults results)
+    [Fact]
+    public async Task TestConcurrentConfigurationChanges()
     {
-        // Test 1: Concurrent configuration changes on same server
-        await results.AssertNoExceptionAsync(
-            "Concurrent configuration changes are handled safely",
-            async () =>
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
+
+        var tasks = new List<Task>();
+        for (int i = 0; i < 10; i++)
+        {
+            int index = i;
+            tasks.Add(Task.Run(async () =>
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (index * 100));
+            }));
+        }
 
-                var tasks = new List<Task>();
-                for (int i = 0; i < 10; i++)
-                {
-                    int index = i;
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (index * 100));
-                    }));
-                }
+        await Task.WhenAll(tasks);
+        await server.ShutdownAsync();
+    }
 
-                await Task.WhenAll(tasks);
-                await server.ShutdownAsync();
-            });
+    [Fact]
+    public async Task TestConcurrentReadsDuringConfigurationChanges()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
-        // Test 2: Concurrent reads during configuration change
-        await results.AssertNoExceptionAsync(
-            "Concurrent reads during configuration changes",
-            async () =>
+        var writeTask = Task.Run(async () =>
+        {
+            for (int i = 0; i < 5; i++)
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                await server.ApplyChangesAsync(c => c.Debug = !c.Debug);
+                await Task.Delay(10);
+            }
+        });
 
-                var writeTask = Task.Run(async () =>
-                {
-                    for (int i = 0; i < 5; i++)
-                    {
-                        await server.ApplyChangesAsync(c => c.Debug = !c.Debug);
-                        await Task.Delay(10);
-                    }
-                });
-
-                var readTasks = new List<Task>();
-                for (int i = 0; i < 20; i++)
-                {
-                    readTasks.Add(Task.Run(async () =>
-                    {
-                        await server.GetInfoAsync();
-                        await Task.Delay(5);
-                    }));
-                }
-
-                await Task.WhenAll(readTasks);
-                await writeTask;
-                await server.ShutdownAsync();
-            });
-
-        // Test 3: Concurrent leaf node subject modifications
-        // DISABLED: Known NATS server limitation - concurrent leaf node permission updates don't synchronize properly
-        // See: https://github.com/nats-io/nats-server/issues/2949
-        // See: https://github.com/nats-io/nats-server/issues/4608
-        // Workaround: Configure subjects at startup or modify them sequentially rather than concurrently
-        /*
-        await results.AssertNoExceptionAsync(
-            "Concurrent leaf node subject modifications",
-            async () =>
+        var readTasks = new List<Task>();
+        for (int i = 0; i < 20; i++)
+        {
+            readTasks.Add(Task.Run(async () =>
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration { Port = 17422 }
-                });
+                await server.GetInfoAsync();
+                await Task.Delay(5);
+            }));
+        }
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        await Task.WhenAll(readTasks);
+        await writeTask;
+        await server.ShutdownAsync();
+    }
 
-                var tasks = new List<Task>();
-                for (int i = 0; i < 5; i++)
-                {
-                    int index = i;
-                    tasks.Add(server.AddLeafNodeImportSubjectsAsync($"subject{index}.>"));
-                }
+    // Test 3: Concurrent leaf node subject modifications
+    // DISABLED: Known NATS server limitation - concurrent leaf node permission updates don't synchronize properly
+    // See: https://github.com/nats-io/nats-server/issues/2949
+    // See: https://github.com/nats-io/nats-server/issues/4608
+    // Workaround: Configure subjects at startup or modify them sequentially rather than concurrently
+    /*
+    [Fact]
+    public async Task TestConcurrentLeafNodeSubjectModifications()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration { Port = 17422 }
+        });
 
-                await Task.WhenAll(tasks);
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var tasks = new List<Task>();
+        for (int i = 0; i < 5; i++)
+        {
+            int index = i;
+            tasks.Add(server.AddLeafNodeImportSubjectsAsync($"subject{index}.>"));
+        }
 
-                if (info.CurrentConfig.LeafNode.ImportSubjects.Count != 5)
-                {
-                    throw new Exception($"Expected 5 subjects, got {info.CurrentConfig.LeafNode.ImportSubjects.Count}");
-                }
-            });
-        */
+        await Task.WhenAll(tasks);
 
-        // Test 4: Concurrent operations on multiple servers
-        await results.AssertNoExceptionAsync(
-            "Concurrent operations on multiple independent servers",
-            async () =>
+        var info = await server.GetInfoAsync();
+        await server.ShutdownAsync();
+
+        Assert.Equal(5, info.CurrentConfig.LeafNode.ImportSubjects.Count);
+    }
+    */
+
+    [Fact]
+    public async Task TestConcurrentOperationsOnMultipleServers()
+    {
+        var servers = new List<NatsController>();
+        var tasks = new List<Task>();
+
+        try
+        {
+            for (int i = 0; i < 5; i++)
             {
-                var servers = new List<NatsController>();
-                var tasks = new List<Task>();
+                var server = new NatsController();
+                servers.Add(server);
+                int port = 14222 + i;
+                tasks.Add(server.ConfigureAsync(new BrokerConfiguration { Port = port }));
+            }
 
-                try
-                {
-                    for (int i = 0; i < 5; i++)
-                    {
-                        var server = new NatsController();
-                        servers.Add(server);
-                        int port = 14222 + i;
-                        tasks.Add(server.ConfigureAsync(new BrokerConfiguration { Port = port }));
-                    }
+            await Task.WhenAll(tasks);
+            tasks.Clear();
 
-                    await Task.WhenAll(tasks);
-                    tasks.Clear();
-
-                    // Perform concurrent operations
-                    foreach (var server in servers)
-                    {
-                        tasks.Add(server.ApplyChangesAsync(c => c.Debug = true));
-                    }
-
-                    await Task.WhenAll(tasks);
-                }
-                finally
-                {
-                    foreach (var server in servers)
-                    {
-                        try { await server.ShutdownAsync(); } catch { }
-                        server.Dispose();
-                    }
-                }
-            });
-
-        // Test 5: Rapid sequential changes
-        await results.AssertNoExceptionAsync(
-            "Rapid sequential configuration changes",
-            async () =>
+            // Perform concurrent operations
+            foreach (var server in servers)
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                tasks.Add(server.ApplyChangesAsync(c => c.Debug = true));
+            }
 
-                for (int i = 0; i < 20; i++)
-                {
-                    await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (i * 100));
-                }
-
-                await server.ShutdownAsync();
-            });
-
-        // Test 6: Concurrent rollbacks
-        await results.AssertAsync(
-            "Concurrent rollback attempts are handled safely",
-            async () =>
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            foreach (var server in servers)
             {
-                using var server = new NatsController();
-                await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+                try { await server.ShutdownAsync(); } catch { }
+                server.Dispose();
+            }
+        }
+    }
 
-                // Create some version history
-                for (int i = 0; i < 5; i++)
-                {
-                    await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (i * 100));
-                }
+    [Fact]
+    public async Task TestRapidSequentialChanges()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
-                // Try concurrent rollbacks
-                var tasks = new List<Task<ConfigurationResult>>();
-                for (int i = 0; i < 3; i++)
-                {
-                    tasks.Add(server.RollbackAsync(toVersion: 2));
-                }
+        for (int i = 0; i < 20; i++)
+        {
+            await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (i * 100));
+        }
 
-                var rollbackResults = await Task.WhenAll(tasks);
-                await server.ShutdownAsync();
+        await server.ShutdownAsync();
+    }
 
-                // At least one should succeed
-                return rollbackResults.Any(r => r.Success);
-            });
+    [Fact]
+    public async Task TestConcurrentRollbacks()
+    {
+        using var server = new NatsController();
+        var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 });
+        Assert.True(result.Success, $"Failed to start server: {result.ErrorMessage}");
 
-        // Test 7: Stress test - many rapid operations
-        await results.AssertNoExceptionAsync(
-            "Stress test: 100 rapid operations across multiple servers",
-            async () =>
+        // Create some version history
+        for (int i = 0; i < 5; i++)
+        {
+            await server.ApplyChangesAsync(c => c.MaxPayload = 1024 + (i * 100));
+        }
+
+        // Try concurrent rollbacks
+        var tasks = new List<Task<ConfigurationResult>>();
+        for (int i = 0; i < 3; i++)
+        {
+            tasks.Add(server.RollbackAsync(toVersion: 2));
+        }
+
+        var rollbackResults = await Task.WhenAll(tasks);
+        await server.ShutdownAsync();
+
+        // At least one should succeed
+        Assert.True(rollbackResults.Any(r => r.Success), "At least one rollback should succeed");
+    }
+
+    [Fact]
+    public async Task TestStressTest_100RapidOperations()
+    {
+        var servers = new List<NatsController>();
+        try
+        {
+            // Create 3 servers
+            for (int i = 0; i < 3; i++)
             {
-                var servers = new List<NatsController>();
-                try
-                {
-                    // Create 3 servers
-                    for (int i = 0; i < 3; i++)
-                    {
-                        var server = new NatsController();
-                        servers.Add(server);
-                        await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 + i });
-                    }
+                var server = new NatsController();
+                servers.Add(server);
+                var result = await server.ConfigureAsync(new BrokerConfiguration { Port = 14222 + i });
+                Assert.True(result.Success, $"Failed to start server {i}: {result.ErrorMessage}");
+            }
 
-                    // Perform 100 operations across the servers
-                    var tasks = new List<Task>();
-                    for (int i = 0; i < 100; i++)
-                    {
-                        var server = servers[i % servers.Count];
-                        int value = i;
-                        tasks.Add(server.ApplyChangesAsync(c => c.MaxPayload = 1024 + value));
-                    }
+            // Perform 100 operations across the servers
+            var tasks = new List<Task>();
+            for (int i = 0; i < 100; i++)
+            {
+                var server = servers[i % servers.Count];
+                int value = i;
+                tasks.Add(server.ApplyChangesAsync(c => c.MaxPayload = 1024 + value));
+            }
 
-                    await Task.WhenAll(tasks);
-                }
-                finally
-                {
-                    foreach (var server in servers)
-                    {
-                        try { await server.ShutdownAsync(); } catch { }
-                        server.Dispose();
-                    }
-                }
-            });
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            foreach (var server in servers)
+            {
+                try { await server.ShutdownAsync(); } catch { }
+                server.Dispose();
+            }
+        }
     }
 }

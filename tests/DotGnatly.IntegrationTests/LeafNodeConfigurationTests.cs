@@ -1,344 +1,260 @@
 using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
+using Xunit;
 
 namespace DotGnatly.IntegrationTests;
 
 /// <summary>
 /// Tests leaf node configuration including hot reload of import/export subjects.
 /// </summary>
-public class LeafNodeConfigurationTests : IIntegrationTest
+public class LeafNodeConfigurationTests
 {
-    public async Task RunAsync(TestResults results)
+    [Fact]
+    public async Task ConfigureLeafNodeWithImportAndExportSubjects()
     {
-        // Test 1: Configure leaf node with import/export subjects
-        await results.AssertNoExceptionAsync(
-            "Configure leaf node with import and export subjects",
-            async () =>
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "events.>", "data.*" },
-                        ExportSubjects = new List<string> { "commands.>", "status.*" }
-                    }
-                });
+                Port = 17422,
+                ImportSubjects = new List<string> { "events.>", "data.*" },
+                ExportSubjects = new List<string> { "commands.>", "status.*" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                var info = await server.GetInfoAsync();
-                var leafNode = info.CurrentConfig.LeafNode;
+        var info = await server.GetInfoAsync();
+        var leafNode = info.CurrentConfig.LeafNode;
 
-                if (leafNode.ImportSubjects.Count != 2 ||
-                    !leafNode.ImportSubjects.Contains("events.>") ||
-                    !leafNode.ImportSubjects.Contains("data.*"))
-                {
-                    throw new Exception("Import subjects not configured correctly");
-                }
+        Assert.Equal(2, leafNode.ImportSubjects.Count);
+        Assert.Contains("events.>", leafNode.ImportSubjects);
+        Assert.Contains("data.*", leafNode.ImportSubjects);
 
-                if (leafNode.ExportSubjects.Count != 2 ||
-                    !leafNode.ExportSubjects.Contains("commands.>") ||
-                    !leafNode.ExportSubjects.Contains("status.*"))
-                {
-                    throw new Exception("Export subjects not configured correctly");
-                }
+        Assert.Equal(2, leafNode.ExportSubjects.Count);
+        Assert.Contains("commands.>", leafNode.ExportSubjects);
+        Assert.Contains("status.*", leafNode.ExportSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 2: Hot reload - Add import subjects
-        await results.AssertNoExceptionAsync(
-            "Hot reload: Add import subjects to leaf node",
-            async () =>
+    [Fact]
+    public async Task HotReloadAddImportSubjectsToLeafNode()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "events.>" }
-                    }
-                });
+                Port = 17422,
+                ImportSubjects = new List<string> { "events.>" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                // Hot reload to add more import subjects
-                var result = await server.AddLeafNodeImportSubjectsAsync("data.*", "logs.>");
+        // Hot reload to add more import subjects
+        var result = await server.AddLeafNodeImportSubjectsAsync("data.*", "logs.>");
 
-                if (!result.Success)
-                {
-                    throw new Exception("Failed to add import subjects");
-                }
+        Assert.True(result.Success, "Failed to add import subjects");
 
-                var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
+        var info = await server.GetInfoAsync();
+        var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
-                if (importSubjects.Count != 3 ||
-                    !importSubjects.Contains("events.>") ||
-                    !importSubjects.Contains("data.*") ||
-                    !importSubjects.Contains("logs.>"))
-                {
-                    throw new Exception("Import subjects not updated correctly");
-                }
+        Assert.Equal(3, importSubjects.Count);
+        Assert.Contains("events.>", importSubjects);
+        Assert.Contains("data.*", importSubjects);
+        Assert.Contains("logs.>", importSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 3: Hot reload - Remove import subjects
-        await results.AssertNoExceptionAsync(
-            "Hot reload: Remove import subjects from leaf node",
-            async () =>
+    [Fact]
+    public async Task HotReloadRemoveImportSubjectsFromLeafNode()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "events.>", "data.*", "logs.>" }
-                    }
-                });
+                Port = 17422,
+                ImportSubjects = new List<string> { "events.>", "data.*", "logs.>" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                // Hot reload to remove an import subject
-                var result = await server.RemoveLeafNodeImportSubjectsAsync("data.*");
+        // Hot reload to remove an import subject
+        var result = await server.RemoveLeafNodeImportSubjectsAsync("data.*");
 
-                if (!result.Success)
-                {
-                    throw new Exception("Failed to remove import subject");
-                }
+        Assert.True(result.Success, "Failed to remove import subject");
 
-                var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
+        var info = await server.GetInfoAsync();
+        var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
-                if (importSubjects.Count != 2 ||
-                    !importSubjects.Contains("events.>") ||
-                    !importSubjects.Contains("logs.>") ||
-                    importSubjects.Contains("data.*"))
-                {
-                    throw new Exception("Import subjects not updated correctly");
-                }
+        Assert.Equal(2, importSubjects.Count);
+        Assert.Contains("events.>", importSubjects);
+        Assert.Contains("logs.>", importSubjects);
+        Assert.DoesNotContain("data.*", importSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 4: Hot reload - Add export subjects
-        await results.AssertNoExceptionAsync(
-            "Hot reload: Add export subjects to leaf node",
-            async () =>
+    [Fact]
+    public async Task HotReloadAddExportSubjectsToLeafNode()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ExportSubjects = new List<string> { "commands.>" }
-                    }
-                });
+                Port = 17422,
+                ExportSubjects = new List<string> { "commands.>" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                var result = await server.AddLeafNodeExportSubjectsAsync("status.*", "metrics.>");
+        var result = await server.AddLeafNodeExportSubjectsAsync("status.*", "metrics.>");
 
-                if (!result.Success)
-                {
-                    throw new Exception("Failed to add export subjects");
-                }
+        Assert.True(result.Success, "Failed to add export subjects");
 
-                var info = await server.GetInfoAsync();
-                var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
+        var info = await server.GetInfoAsync();
+        var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
 
-                if (exportSubjects.Count != 3)
-                {
-                    throw new Exception($"Expected 3 export subjects, got {exportSubjects.Count}");
-                }
+        Assert.Equal(3, exportSubjects.Count);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 5: Hot reload - Replace all import subjects
-        await results.AssertNoExceptionAsync(
-            "Hot reload: Replace all import subjects",
-            async () =>
+    [Fact]
+    public async Task HotReloadReplaceAllImportSubjects()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "old.>", "legacy.*" }
-                    }
-                });
+                Port = 17422,
+                ImportSubjects = new List<string> { "old.>", "legacy.*" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                var result = await server.SetLeafNodeImportSubjectsAsync(new[] { "new.>", "modern.*" });
+        var result = await server.SetLeafNodeImportSubjectsAsync(new[] { "new.>", "modern.*" });
 
-                if (!result.Success)
-                {
-                    throw new Exception("Failed to replace import subjects");
-                }
+        Assert.True(result.Success, "Failed to replace import subjects");
 
-                var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
+        var info = await server.GetInfoAsync();
+        var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
-                if (importSubjects.Count != 2 ||
-                    !importSubjects.Contains("new.>") ||
-                    !importSubjects.Contains("modern.*") ||
-                    importSubjects.Contains("old.>"))
-                {
-                    throw new Exception("Import subjects not replaced correctly");
-                }
+        Assert.Equal(2, importSubjects.Count);
+        Assert.Contains("new.>", importSubjects);
+        Assert.Contains("modern.*", importSubjects);
+        Assert.DoesNotContain("old.>", importSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 6: Hot reload - Replace all export subjects
-        await results.AssertNoExceptionAsync(
-            "Hot reload: Replace all export subjects",
-            async () =>
+    [Fact]
+    public async Task HotReloadReplaceAllExportSubjects()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ExportSubjects = new List<string> { "old.>", "legacy.*" }
-                    }
-                });
+                Port = 17422,
+                ExportSubjects = new List<string> { "old.>", "legacy.*" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                var result = await server.SetLeafNodeExportSubjectsAsync(new[] { "new.>", "modern.*" });
+        var result = await server.SetLeafNodeExportSubjectsAsync(new[] { "new.>", "modern.*" });
 
-                if (!result.Success)
-                {
-                    throw new Exception("Failed to replace export subjects");
-                }
+        Assert.True(result.Success, "Failed to replace export subjects");
 
-                var info = await server.GetInfoAsync();
-                var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
+        var info = await server.GetInfoAsync();
+        var exportSubjects = info.CurrentConfig.LeafNode.ExportSubjects;
 
-                if (exportSubjects.Count != 2 ||
-                    !exportSubjects.Contains("new.>") ||
-                    !exportSubjects.Contains("modern.*"))
-                {
-                    throw new Exception("Export subjects not replaced correctly");
-                }
+        Assert.Equal(2, exportSubjects.Count);
+        Assert.Contains("new.>", exportSubjects);
+        Assert.Contains("modern.*", exportSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 7: Multiple hot reloads in sequence
-        await results.AssertNoExceptionAsync(
-            "Multiple sequential hot reloads of leaf node subjects",
-            async () =>
+    [Fact]
+    public async Task MultipleSequentialHotReloadsOfLeafNodeSubjects()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string> { "v1.>" }
-                    }
-                });
+                Port = 17422,
+                ImportSubjects = new List<string> { "v1.>" }
+            }
+        });
 
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
-                }
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                // First reload - add subjects
-                await server.AddLeafNodeImportSubjectsAsync("v2.>");
+        // First reload - add subjects
+        await server.AddLeafNodeImportSubjectsAsync("v2.>");
 
-                // Second reload - add more subjects
-                await server.AddLeafNodeImportSubjectsAsync("v3.>");
+        // Second reload - add more subjects
+        await server.AddLeafNodeImportSubjectsAsync("v3.>");
 
-                // Third reload - remove one
-                await server.RemoveLeafNodeImportSubjectsAsync("v1.>");
+        // Third reload - remove one
+        await server.RemoveLeafNodeImportSubjectsAsync("v1.>");
 
-                var info = await server.GetInfoAsync();
-                var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
+        var info = await server.GetInfoAsync();
+        var importSubjects = info.CurrentConfig.LeafNode.ImportSubjects;
 
-                if (importSubjects.Count != 2 ||
-                    !importSubjects.Contains("v2.>") ||
-                    !importSubjects.Contains("v3.>") ||
-                    importSubjects.Contains("v1.>"))
-                {
-                    throw new Exception("Sequential hot reloads did not work correctly");
-                }
+        Assert.Equal(2, importSubjects.Count);
+        Assert.Contains("v2.>", importSubjects);
+        Assert.Contains("v3.>", importSubjects);
+        Assert.DoesNotContain("v1.>", importSubjects);
 
-                await server.ShutdownAsync();
-            });
+        await server.ShutdownAsync();
+    }
 
-        // Test 8: Wildcard patterns in subjects
-        await results.AssertNoExceptionAsync(
-            "Leaf node with wildcard patterns (* and >)",
-            async () =>
+    [Fact]
+    public async Task LeafNodeWithWildcardPatterns()
+    {
+        using var server = new NatsController();
+        var configResult = await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14222,
+            LeafNode = new LeafNodeConfiguration
             {
-                using var server = new NatsController();
-                var configResult = await server.ConfigureAsync(new BrokerConfiguration
+                Port = 17422,
+                ImportSubjects = new List<string>
                 {
-                    Port = 14222,
-                    LeafNode = new LeafNodeConfiguration
-                    {
-                        Port = 17422,
-                        ImportSubjects = new List<string>
-                        {
-                            "events.>",          // Multi-token wildcard
-                            "data.*.received",   // Single-token wildcard
-                            "logs.*.*.error",    // Multiple single-token wildcards
-                            ">"                  // Full wildcard
-                        }
-                    }
-                });
-
-                if (!configResult.Success)
-                {
-                    throw new Exception($"Configuration failed: {configResult.ErrorMessage}");
+                    "events.>",          // Multi-token wildcard
+                    "data.*.received",   // Single-token wildcard
+                    "logs.*.*.error",    // Multiple single-token wildcards
+                    ">"                  // Full wildcard
                 }
+            }
+        });
 
-                var info = await server.GetInfoAsync();
+        Assert.True(configResult.Success, $"Configuration failed: {configResult.ErrorMessage}");
 
-                if (info.CurrentConfig.LeafNode.ImportSubjects.Count != 4)
-                {
-                    throw new Exception("Wildcard patterns not configured correctly");
-                }
+        var info = await server.GetInfoAsync();
 
-                await server.ShutdownAsync();
-            });
+        Assert.Equal(4, info.CurrentConfig.LeafNode.ImportSubjects.Count);
+
+        await server.ShutdownAsync();
     }
 }
