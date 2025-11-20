@@ -200,17 +200,22 @@ The project uses xUnit for unit and integration tests:
 
 **Running Tests:**
 ```bash
-# Run all tests
+# Run all .NET tests
 dotnet test
 
 # Run specific test project
 dotnet test tests/DotGnatly.Core.Tests
+dotnet test tests/DotGnatly.Nats.Tests
+dotnet test tests/DotGnatly.IntegrationTests
 
 # Run with verbose output
 dotnet test -v detailed
 
 # Run tests in parallel
 dotnet test --parallel
+
+# Run Go tests
+cd native && go test -v
 ```
 
 ### NuGet Packaging
@@ -571,10 +576,14 @@ Comprehensive documentation is in the `docs/` folder:
 - **INDEX.md** (514 lines) - Navigation guide
 
 Additional documentation:
-- **TODO_NATS_FEATURES.md** (470 lines) - Feature roadmap and implementation status
+- **ROADMAP.md** (formerly TODO_NATS_FEATURES.md) (470 lines) - Feature roadmap and implementation status
 - **MONITORING_IMPLEMENTATION_SUMMARY.md** - Technical implementation details
 - **IMPLEMENTATION_SUMMARY.md** - Project implementation summary
 - **TEACHER_GUIDE.md** - Educational guide for teaching with DotGnatly
+
+Native bindings documentation:
+- **native/README.md** - Build instructions and cross-platform support
+- **native/README_TESTS.md** - Go test documentation
 
 Total: 6,500+ lines of documentation
 
@@ -592,10 +601,11 @@ Total: 6,500+ lines of documentation
 ### Code Quality Standards
 
 - **Zero warnings** - Project currently builds with 0 warnings
-- **Zero errors** - All tests passing
+- **Zero errors** - All tests passing (104/109 integration tests = 95% pass rate)
 - **Async/await** - Use async throughout, don't mix sync/async
 - **Resource disposal** - Always dispose `NatsController` and other IDisposable resources
 - **Validation** - Never bypass validation unless explicitly needed for testing
+- **Test coverage** - Add tests for all new features (unit, integration, and Go tests)
 
 ### Security Considerations
 
@@ -614,6 +624,19 @@ Total: 6,500+ lines of documentation
 - Reference issue numbers when applicable
 - Keep commits focused and atomic
 - For version bumping: Use conventional commits (feat:, fix:, chore:, etc.) as Mister.Version uses them for versioning
+
+## Running Go Tests
+
+The native bindings have comprehensive Go unit tests (30+ tests):
+
+```bash
+cd native
+go test -v                    # Run all tests with verbose output
+go test -run TestBasicOps    # Run specific test
+go test -cover               # Run with coverage report
+```
+
+See **[native/README_TESTS.md](native/README_TESTS.md)** for comprehensive test documentation.
 
 ## Version Information
 
@@ -634,11 +657,19 @@ dotnet build DotGnatly.sln
 # Run examples
 cd examples/DotGnatly.Examples && dotnet run
 
-# Run tests
+# Run all .NET tests
 dotnet test
 
 # Run specific test project
 dotnet test tests/DotGnatly.Core.Tests
+dotnet test tests/DotGnatly.Nats.Tests
+dotnet test tests/DotGnatly.IntegrationTests
+
+# Run tests with detailed output
+dotnet test -v detailed
+
+# Run Go tests
+cd native && go test -v
 
 # Clean
 dotnet clean DotGnatly.sln
@@ -646,6 +677,10 @@ dotnet clean DotGnatly.sln
 # Build native bindings (required before first .NET build)
 cd native && ./build.sh  # Linux/macOS
 cd native && .\build.ps1 # Windows
+
+# Package for NuGet
+.\pack-nuget.ps1         # Windows
+./pack-nuget.sh          # Linux/macOS
 ```
 
 ### Essential Code Patterns
