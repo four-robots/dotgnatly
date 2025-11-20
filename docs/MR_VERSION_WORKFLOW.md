@@ -1,14 +1,23 @@
 # Mr-Version Automated Versioning Workflow
 
-This document explains how DotGnatly uses Mr-Version for automated semantic versioning and repository tagging in the NuGet package workflow.
+This document explains how DotGnatly uses **Mr-Version** (Mister.Version) for automated semantic versioning and repository tagging in the NuGet package workflow.
 
 ## Overview
 
-The NuGet package workflow (`nuget-package.yml`) integrates with **Mr-Version** to:
-- Automatically calculate semantic versions based on git history
-- Apply versions to all NuGet packages
+The NuGet package workflow (`nuget-package.yml`) integrates with **Mr-Version** official GitHub Actions to:
+- Automatically calculate semantic versions based on git history and conventional commits
+- Apply versions to all NuGet packages during build
 - Tag the repository with version tags after successful builds
 - Ensure consistent versioning across all packages
+- Support prerelease versioning (alpha, beta, rc)
+
+## Mr-Version GitHub Actions
+
+The workflow uses three official actions from the [mr-version organization](https://github.com/orgs/mr-version/repositories):
+
+1. **`mr-version/setup@v1`** - Installs and configures the Mister.Version CLI tool
+2. **`mr-version/calculate@v1`** - Calculates semantic versions from git history
+3. **`mr-version/tag@v1`** - Creates and pushes version tags to the repository
 
 ## Mr-Version Configuration
 
@@ -31,13 +40,14 @@ defaultIncrement: patch
 ### 1. Version Calculation
 
 The workflow includes a `calculate-version` job that:
-- Installs Mr-Version as a .NET global tool
-- Analyzes git history to determine the next version
+- Uses `mr-version/setup@v1` to install the Mister.Version CLI tool
+- Uses `mr-version/calculate@v1` to analyze git history and conventional commits
 - Outputs version components:
-  - `Version` - Full semantic version (e.g., "1.2.3")
-  - `AssemblyVersion` - Assembly version (e.g., "1.2.0.0")
-  - `FileVersion` - File version (e.g., "1.2.3.0")
-  - `InformationalVersion` - Full version with metadata (e.g., "1.2.3+abc123")
+  - `version` - Full semantic version (e.g., "1.2.3")
+  - `major` - Major version number (e.g., "1")
+  - `minor` - Minor version number (e.g., "2")
+  - `patch` - Patch version number (e.g., "3")
+  - `has-changes` - Boolean indicating if versions changed
 
 ### 2. Build with Version
 
@@ -61,9 +71,10 @@ NuGet packages are created with the calculated version:
 ### 4. Repository Tagging
 
 After successful package creation (and optionally publication), the workflow:
-- Creates an annotated git tag (e.g., `v1.2.3`)
-- Pushes the tag to the repository
-- Uses retry logic for network resilience
+- Uses `mr-version/tag@v1` to create version tags
+- Creates global repository tags (e.g., `v1.2.3`)
+- Optionally creates project-specific tags (e.g., `DotGnatly.Core/v1.2.3`)
+- Automatically handles tag conflicts and provides detailed output
 
 ## Workflow Triggers
 
@@ -99,18 +110,27 @@ on:
   workflow_dispatch:
     inputs:
       publish: boolean
-      increment: choice [major, minor, patch]
+      prerelease-type: choice [none, alpha, beta, rc]
 ```
 - Optionally publish to NuGet.org
-- Specify version increment type
+- Specify prerelease type for versioning
 
-## Version Increment Types
+## Prerelease Types
 
-When manually triggering the workflow, you can specify the increment type:
+When manually triggering the workflow, you can specify the prerelease type:
 
-- **major** (1.2.3 → 2.0.0): Breaking changes
-- **minor** (1.2.3 → 1.3.0): New features, backward compatible
-- **patch** (1.2.3 → 1.2.4): Bug fixes, backward compatible
+- **none**: Full release version (e.g., "1.2.3")
+- **alpha**: Alpha prerelease (e.g., "1.2.3-alpha.1")
+- **beta**: Beta prerelease (e.g., "1.2.3-beta.1")
+- **rc**: Release candidate (e.g., "1.2.3-rc.1")
+
+## Conventional Commit Version Bumps
+
+Mr-Version analyzes commit messages following [Conventional Commits](https://www.conventionalcommits.org/) to determine version bumps:
+
+- **`feat:`** - New feature → **minor** version bump (1.2.3 → 1.3.0)
+- **`fix:`** - Bug fix → **patch** version bump (1.2.3 → 1.2.4)
+- **`feat!:`** or **`BREAKING CHANGE:`** - Breaking change → **major** version bump (1.2.3 → 2.0.0)
 
 ## Directory.Build.props Integration
 
@@ -131,7 +151,8 @@ This allows:
 ### Job 1: calculate-version
 - **Purpose**: Calculate semantic version using Mr-Version
 - **Runs on**: ubuntu-latest
-- **Outputs**: version, assembly-version, file-version, informational-version
+- **Actions Used**: `mr-version/setup@v1`, `mr-version/calculate@v1`
+- **Outputs**: version, major, minor, patch, has-changes
 
 ### Job 2: build-native-bindings
 - **Purpose**: Build native NATS server bindings
@@ -148,11 +169,13 @@ This allows:
 ### Job 4: tag-version
 - **Purpose**: Tag repository with version
 - **Runs on**: ubuntu-latest
+- **Actions Used**: `mr-version/setup@v1`, `mr-version/tag@v1`
 - **Depends on**: calculate-version, package
 - **Conditions**: Only runs when:
   - Full release is published
   - Manual trigger with publish=true
   - Push to main or develop branch
+- **Outputs**: tags-created, tags-count, global-tags-created, project-tags-created
 
 ## Tag Naming Convention
 
@@ -211,8 +234,8 @@ To manually publish packages to NuGet.org:
 2. Select **NuGet Package** workflow
 3. Click **Run workflow**
 4. Select branch (usually `main`)
-5. Check **Publish to NuGet.org**
-6. Choose version increment (major/minor/patch)
+5. Check **Publish to NuGet.org** (if publishing)
+6. Choose **Prerelease type** (none, alpha, beta, rc)
 7. Click **Run workflow**
 
 ## Troubleshooting
@@ -222,9 +245,13 @@ To manually publish packages to NuGet.org:
 **Issue**: Version stays at base version (0.1.0)
 
 **Solution**:
-- Ensure commits follow conventional commit format
+- Ensure commits follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+  - `feat: add new feature` (minor bump)
+  - `fix: fix bug` (patch bump)
+  - `feat!: breaking change` or include `BREAKING CHANGE:` in commit body (major bump)
 - Check `mr-version.yml` configuration
-- Verify Mr-Version installation in workflow logs
+- Verify Mr-Version setup in workflow logs
+- Use `fetch-depth: 0` in checkout to get full git history
 
 ### Tag Already Exists
 
@@ -271,9 +298,48 @@ To manually publish packages to NuGet.org:
    - Merge to main for production releases
    - Create GitHub release for final publication
 
+## Workflow Configuration Example
+
+Here's a simplified view of how the jobs work together:
+
+```yaml
+jobs:
+  calculate-version:
+    steps:
+      - uses: mr-version/setup@v1
+      - uses: mr-version/calculate@v1
+        with:
+          projects: 'src/**/*.csproj'
+          prerelease-type: 'none'
+          tag-prefix: 'v'
+
+  build-native-bindings:
+    # Build .dll and .so files in parallel
+
+  package:
+    needs: [calculate-version, build-native-bindings]
+    steps:
+      - run: dotnet build /p:Version=${{ needs.calculate-version.outputs.version }}
+      - run: dotnet pack
+      - run: dotnet nuget push  # (conditional)
+
+  tag-version:
+    needs: [calculate-version, package]
+    steps:
+      - uses: mr-version/setup@v1
+      - uses: mr-version/tag@v1
+        with:
+          create-global-tags: true
+          global-tag-strategy: 'all'
+```
+
 ## Additional Resources
 
-- [Mr-Version GitHub](https://github.com/Khitiara/MrVersion)
+- [Mr-Version GitHub Organization](https://github.com/orgs/mr-version/repositories)
+- [mr-version/setup Action](https://github.com/mr-version/setup)
+- [mr-version/calculate Action](https://github.com/mr-version/calculate)
+- [mr-version/tag Action](https://github.com/mr-version/tag)
+- [Mister.Version CLI](https://github.com/mr-version/mister.version)
 - [Semantic Versioning 2.0](https://semver.org/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [GitHub Actions Documentation](https://docs.github.com/actions)

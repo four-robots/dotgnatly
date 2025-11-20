@@ -14,15 +14,16 @@ on:
         required: false
         default: false
         type: boolean
-      increment:
-        description: 'Version increment (major, minor, patch)'
+      prerelease-type:
+        description: 'Prerelease type'
         required: false
-        default: 'patch'
+        default: 'none'
         type: choice
         options:
-          - major
-          - minor
-          - patch
+          - none
+          - alpha
+          - beta
+          - rc
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,10 +38,11 @@ jobs:
     name: Calculate Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.mr-version.outputs.Version }}
-      assembly-version: ${{ steps.mr-version.outputs.AssemblyVersion }}
-      file-version: ${{ steps.mr-version.outputs.FileVersion }}
-      informational-version: ${{ steps.mr-version.outputs.InformationalVersion }}
+      version: ${{ steps.calculate.outputs.version }}
+      major: ${{ steps.calculate.outputs.major }}
+      minor: ${{ steps.calculate.outputs.minor }}
+      patch: ${{ steps.calculate.outputs.patch }}
+      has-changes: ${{ steps.calculate.outputs.has-changes }}
 
     steps:
     - name: Checkout code
@@ -48,39 +50,29 @@ jobs:
       with:
         fetch-depth: 0  # Required for Mr-Version to analyze git history
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - name: Setup Mr-Version
+      uses: mr-version/setup@v1
       with:
         dotnet-version: '9.0.x'
 
-    - name: Install Mr-Version
-      run: dotnet tool install --global MrVersion --version 1.0.0 || dotnet tool update --global MrVersion
-
     - name: Calculate version
-      id: mr-version
+      id: calculate
+      uses: mr-version/calculate@v1
+      with:
+        projects: 'src/**/*.csproj'
+        prerelease-type: ${{ github.event.inputs.prerelease-type || 'none' }}
+        tag-prefix: 'v'
+        update-project-properties: false
+
+    - name: Display version info
       run: |
-        # Run Mr-Version to calculate the version
-        mrversion --output json > version.json
-
-        # Extract version components
-        VERSION=$(jq -r '.Version' version.json)
-        ASSEMBLY_VERSION=$(jq -r '.AssemblyVersion' version.json)
-        FILE_VERSION=$(jq -r '.FileVersion' version.json)
-        INFORMATIONAL_VERSION=$(jq -r '.InformationalVersion' version.json)
-
-        # Set outputs
-        echo "Version=$VERSION" >> $GITHUB_OUTPUT
-        echo "AssemblyVersion=$ASSEMBLY_VERSION" >> $GITHUB_OUTPUT
-        echo "FileVersion=$FILE_VERSION" >> $GITHUB_OUTPUT
-        echo "InformationalVersion=$INFORMATIONAL_VERSION" >> $GITHUB_OUTPUT
-
-        # Display version info
         echo "## Version Information" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
-        echo "- **Assembly Version**: $ASSEMBLY_VERSION" >> $GITHUB_STEP_SUMMARY
-        echo "- **File Version**: $FILE_VERSION" >> $GITHUB_STEP_SUMMARY
-        echo "- **Informational Version**: $INFORMATIONAL_VERSION" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.calculate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Major**: ${{ steps.calculate.outputs.major }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Minor**: ${{ steps.calculate.outputs.minor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Patch**: ${{ steps.calculate.outputs.patch }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Has Changes**: ${{ steps.calculate.outputs.has-changes }}" >> $GITHUB_STEP_SUMMARY
 
   build-native-bindings:
     name: Build Native Bindings on ${{ matrix.os }}
@@ -174,7 +166,7 @@ jobs:
       run: dotnet restore DotGnatly.sln
 
     - name: Build solution
-      run: dotnet build DotGnatly.sln --configuration Release --no-restore /p:Version=${{ needs.calculate-version.outputs.version }} /p:AssemblyVersion=${{ needs.calculate-version.outputs.assembly-version }} /p:FileVersion=${{ needs.calculate-version.outputs.file-version }} /p:InformationalVersion=${{ needs.calculate-version.outputs.informational-version }}
+      run: dotnet build DotGnatly.sln --configuration Release --no-restore /p:Version=${{ needs.calculate-version.outputs.version }}
 
     - name: Create NuGet packages directory
       run: mkdir -p ./nupkg
@@ -316,52 +308,28 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Configure Git
+    - name: Setup Mr-Version
+      uses: mr-version/setup@v1
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Create and push tags
+      id: tag
+      uses: mr-version/tag@v1
+      with:
+        projects: 'src/**/*.csproj'
+        tag-prefix: 'v'
+        create-global-tags: true
+        global-tag-strategy: 'all'
+        only-changed: false
+
+    - name: Display tag summary
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-
-    - name: Create and push tag
-      env:
-        VERSION: ${{ needs.calculate-version.outputs.version }}
-      run: |
-        TAG_NAME="v${VERSION}"
-
-        echo "Creating tag: $TAG_NAME"
-
-        # Check if tag already exists
-        if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-          echo "Tag $TAG_NAME already exists, skipping tag creation"
-          echo "## ⚠️ Tag Already Exists" >> $GITHUB_STEP_SUMMARY
-          echo "Tag \`$TAG_NAME\` already exists in the repository." >> $GITHUB_STEP_SUMMARY
-          exit 0
-        fi
-
-        # Create annotated tag
-        git tag -a "$TAG_NAME" -m "Release version $VERSION"
-
-        # Push tag with retry logic
-        MAX_RETRIES=4
-        RETRY_COUNT=0
-        WAIT_TIME=2
-
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          if git push origin "$TAG_NAME"; then
-            echo "Successfully pushed tag $TAG_NAME"
-            echo "## ✅ Version Tagged" >> $GITHUB_STEP_SUMMARY
-            echo "Created and pushed tag: \`$TAG_NAME\`" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          else
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "Failed to push tag, retrying in ${WAIT_TIME}s (attempt $RETRY_COUNT of $MAX_RETRIES)..."
-              sleep $WAIT_TIME
-              WAIT_TIME=$((WAIT_TIME * 2))
-            fi
-          fi
-        done
-
-        echo "Failed to push tag after $MAX_RETRIES attempts"
-        echo "## ❌ Tag Push Failed" >> $GITHUB_STEP_SUMMARY
-        echo "Failed to push tag \`$TAG_NAME\` after $MAX_RETRIES attempts" >> $GITHUB_STEP_SUMMARY
-        exit 1
+        echo "## ✅ Version Tags Created" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Tags Count**: ${{ steps.tag.outputs.tags-count }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Tags:" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo '${{ steps.tag.outputs.tags-created }}' | jq -r '.[]' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
