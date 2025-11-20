@@ -172,18 +172,49 @@ jobs:
       run: mkdir -p ./nupkg
 
     - name: Pack DotGnatly.Natives
-      run: dotnet pack src/DotGnatly.Natives/DotGnatly.Natives.csproj -c Release --no-build --output ./nupkg
+      run: dotnet pack src/DotGnatly.Natives/DotGnatly.Natives.csproj -c Release --output ./nupkg /p:Version=${{ needs.calculate-version.outputs.version }} --no-restore
 
     - name: Pack DotGnatly.Core
-      run: dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release --no-build --output ./nupkg
+      run: dotnet pack src/DotGnatly.Core/DotGnatly.Core.csproj -c Release --no-build --output ./nupkg /p:Version=${{ needs.calculate-version.outputs.version }}
 
     - name: Pack DotGnatly.Nats
-      run: dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release --no-build --output ./nupkg
+      run: dotnet pack src/DotGnatly.Nats/DotGnatly.Nats.csproj -c Release --no-build --output ./nupkg /p:Version=${{ needs.calculate-version.outputs.version }}
 
     - name: List created packages
       run: |
         echo "NuGet packages created:"
         ls -lh ./nupkg/*.nupkg
+
+    - name: Verify native bindings in DotGnatly.Natives package
+      run: |
+        echo "Verifying DotGnatly.Natives package contains native bindings..."
+
+        # Extract the package to a temp directory
+        NATIVES_PKG=$(ls ./nupkg/DotGnatly.Natives.*.nupkg | head -n 1)
+        mkdir -p /tmp/natives-pkg-verify
+        unzip -q "$NATIVES_PKG" -d /tmp/natives-pkg-verify
+
+        echo "Package contents:"
+        find /tmp/natives-pkg-verify -type f
+
+        # Verify Windows binding exists
+        if [ ! -f "/tmp/natives-pkg-verify/runtimes/win-x64/native/nats-bindings.dll" ]; then
+          echo "❌ Error: Windows native binding (nats-bindings.dll) not found in package!"
+          echo "Expected: runtimes/win-x64/native/nats-bindings.dll"
+          exit 1
+        fi
+        echo "✅ Windows native binding found: runtimes/win-x64/native/nats-bindings.dll"
+
+        # Verify Linux binding exists
+        if [ ! -f "/tmp/natives-pkg-verify/runtimes/linux-x64/native/nats-bindings.so" ]; then
+          echo "❌ Error: Linux native binding (nats-bindings.so) not found in package!"
+          echo "Expected: runtimes/linux-x64/native/nats-bindings.so"
+          exit 1
+        fi
+        echo "✅ Linux native binding found: runtimes/linux-x64/native/nats-bindings.so"
+
+        echo ""
+        echo "✅ DotGnatly.Natives package verification PASSED - both native bindings are present!"
 
     - name: Upload NuGet packages as artifacts
       uses: actions/upload-artifact@v4
@@ -278,6 +309,10 @@ jobs:
           version=$(basename "$pkg" | sed -n 's/.*\.\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*.*\)\.nupkg/\1/p')
           echo "| $name | $version |" >> $GITHUB_STEP_SUMMARY
         done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Native Bindings Verification" >> $GITHUB_STEP_SUMMARY
+        echo "- Windows x64 binding (nats-bindings.dll) ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Linux x64 binding (nats-bindings.so) ✅" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
         if [ "${{ github.event_name }}" == "release" ] && [ "${{ github.event.release.prerelease }}" == "false" ]; then
