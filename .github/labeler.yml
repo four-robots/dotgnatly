@@ -1,0 +1,66 @@
+# Auto-labeler configuration for pull requests
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ['docs/**', '*.md', 'README*']
+
+core:
+  - changed-files:
+    - any-glob-to-any-file: ['src/DotGnatly.Core/**']
+
+nats:
+  - changed-files:
+    - any-glob-to-any-file: ['src/DotGnatly.Nats/**']
+
+jetstream:
+  - changed-files:
+    - any-glob-to-any-file: ['src/DotGnatly.Extensions.JetStream/**']
+
+natives:
+  - changed-files:
+    - any-glob-to-any-file: ['src/DotGnatly.Natives/**', 'native/**']
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: ['tests/**', '**/*.Tests/**', '**/*_test.go']
+
+ci-cd:
+  - changed-files:
+    - any-glob-to-any-file: ['.github/**', '*.yml', '*.yaml', 'pack-nuget.*']
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: ['**/packages.lock.json', '**/Directory.Packages.props', 'go.mod', 'go.sum']
+
+examples:
+  - changed-files:
+    - any-glob-to-any-file: ['examples/**']
+
+breaking-change:
+  - head-branch: ['^breaking/', 'breaking']
+  - title: ['BREAKING CHANGE', 'breaking change']
+  - body: ['BREAKING CHANGE', 'breaking change']
+
+bug:
+  - head-branch: ['^fix/', '^bugfix/', '^hotfix/']
+  - title: ['^fix:', '^bugfix:', 'fix\(']
+
+feature:
+  - head-branch: ['^feat/', '^feature/']
+  - title: ['^feat:', '^feature:', 'feat\(']
+
+enhancement:
+  - head-branch: ['^enhance/', '^improvement/']
+  - title: ['^enhance:', '^improvement:']
+
+refactor:
+  - head-branch: ['^refactor/']
+  - title: ['^refactor:', 'refactor\(']
+
+performance:
+  - head-branch: ['^perf/']
+  - title: ['^perf:', 'perf\(']
+
+security:
+  - head-branch: ['^security/', '^sec/']
+  - title: ['^security:', '^sec:', 'security\(']

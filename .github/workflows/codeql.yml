@@ -1,0 +1,72 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Mondays at 6 AM UTC
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp', 'go' ]
+        dotnet-version: [ '8.0.x', '9.0.x', '10.0.x' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      if: matrix.language == 'csharp'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+
+    - name: Setup Go
+      if: matrix.language == 'go'
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Build Native Bindings
+      if: matrix.language == 'csharp'
+      run: |
+        cd native
+        chmod +x build.sh
+        ./build.sh
+
+    - name: Build .NET Solution
+      if: matrix.language == 'csharp'
+      run: |
+        dotnet restore DotGnatly.sln
+        dotnet build DotGnatly.sln --configuration Release --no-restore
+
+    - name: Build Go Code
+      if: matrix.language == 'go'
+      working-directory: ./native
+      run: |
+        go mod download
+        go build -v ./...
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"

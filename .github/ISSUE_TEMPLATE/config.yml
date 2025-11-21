@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/your-org/DotGnatly/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Documentation
+    url: https://github.com/your-org/DotGnatly/tree/main/docs
+    about: Read the comprehensive documentation
+  - name: NATS Community
+    url: https://slack.nats.io
+    about: Join the NATS community Slack for general NATS questions
