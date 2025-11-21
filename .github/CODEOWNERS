@@ -1,0 +1,53 @@
+# CODEOWNERS file for DotGnatly
+#
+# This file defines code ownership for automatic PR review assignment
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# This is a fallback and will be overridden by more specific rules below
+* @dotgnatly-maintainers
+
+# Core library owners
+/src/DotGnatly.Core/ @dotgnatly-maintainers @dotgnatly-core-team
+/src/DotGnatly.Nats/ @dotgnatly-maintainers @dotgnatly-nats-team
+
+# JetStream extension owners
+/src/DotGnatly.Extensions.JetStream/ @dotgnatly-maintainers @dotgnatly-jetstream-team
+
+# Native bindings owners (Go + C# bindings)
+/src/DotGnatly.Natives/ @dotgnatly-maintainers @dotgnatly-natives-team
+/native/ @dotgnatly-maintainers @dotgnatly-natives-team
+
+# Test owners
+/tests/ @dotgnatly-maintainers @dotgnatly-test-team
+
+# Documentation owners
+/docs/ @dotgnatly-maintainers @dotgnatly-docs-team
+*.md @dotgnatly-maintainers @dotgnatly-docs-team
+
+# Examples owners
+/examples/ @dotgnatly-maintainers @dotgnatly-examples-team
+
+# CI/CD and GitHub workflows
+/.github/ @dotgnatly-maintainers @dotgnatly-devops-team
+*.yml @dotgnatly-maintainers @dotgnatly-devops-team
+*.yaml @dotgnatly-maintainers @dotgnatly-devops-team
+
+# Build and packaging scripts
+/pack-nuget.* @dotgnatly-maintainers @dotgnatly-devops-team
+/native/build.* @dotgnatly-maintainers @dotgnatly-natives-team
+
+# Solution and project files
+*.sln @dotgnatly-maintainers
+*.csproj @dotgnatly-maintainers
+/src/Directory.Build.props @dotgnatly-maintainers
+/src/Directory.Packages.props @dotgnatly-maintainers
+/src/mr-version.yml @dotgnatly-maintainers
+
+# Go module files
+go.mod @dotgnatly-maintainers @dotgnatly-natives-team
+go.sum @dotgnatly-maintainers @dotgnatly-natives-team
+
+# Security policy
+/SECURITY.md @dotgnatly-maintainers @dotgnatly-security-team
+/.github/SECURITY.md @dotgnatly-maintainers @dotgnatly-security-team

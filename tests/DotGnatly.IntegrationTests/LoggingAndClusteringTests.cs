@@ -1,570 +1,514 @@
 using DotGnatly.Core.Configuration;
 using DotGnatly.Nats.Implementation;
 using System.Text.Json;
+using Xunit;
 
 namespace DotGnatly.IntegrationTests;
 
 /// <summary>
 /// Tests for logging control and JetStream clustering features.
 /// </summary>
-public class LoggingAndClusteringTests : IIntegrationTest
+public class LoggingAndClusteringTests
 {
-    public async Task RunAsync(TestResults results)
+    [Fact]
+    public async Task LogFileConfigurationCanBeSet()
     {
-        // Logging Configuration Tests
-        await results.AssertAsync(
-            "Log file configuration can be set",
-            async () =>
+        using var server = new NatsController();
+
+        var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
+
+        var config = new BrokerConfiguration
+        {
+            Port = 14222,
+            LogFile = logFilePath,
+            LogTimeUtc = true,
+            LogFileSize = 1024 * 1024 // 1MB
+        };
+
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
+
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // Clean up log file
+        try
+        {
+            if (File.Exists(logFilePath))
             {
-                using var server = new NatsController();
+                File.Delete(logFilePath);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
+        Assert.Equal(logFilePath, info.CurrentConfig.LogFile);
+        Assert.True(info.CurrentConfig.LogTimeUtc);
+        Assert.Equal(1024 * 1024, info.CurrentConfig.LogFileSize);
+    }
 
-                var config = new BrokerConfiguration
-                {
-                    Port = 14222,
-                    LogFile = logFilePath,
-                    LogTimeUtc = true,
-                    LogFileSize = 1024 * 1024 // 1MB
-                };
+    [Fact]
+    public async Task LogFileIsCreatedWhenLogFileIsConfigured()
+    {
+        using var server = new NatsController();
 
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
+        var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var config = new BrokerConfiguration
+        {
+            Port = 14223,
+            LogFile = logFilePath,
+            Debug = true // Generate some log output
+        };
 
-                // Clean up log file
-                try
-                {
-                    if (File.Exists(logFilePath))
-                    {
-                        File.Delete(logFilePath);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
 
-                return info.CurrentConfig.LogFile == logFilePath &&
-                       info.CurrentConfig.LogTimeUtc == true &&
-                       info.CurrentConfig.LogFileSize == 1024 * 1024;
-            });
+        // Wait a bit for log file to be created
+        await Task.Delay(1000, TestContext.Current.CancellationToken);
 
-        await results.AssertAsync(
-            "Log file is created when LogFile is configured",
-            async () =>
+        var logFileExists = File.Exists(logFilePath);
+
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // Clean up log file
+        try
+        {
+            if (File.Exists(logFilePath))
             {
-                using var server = new NatsController();
+                File.Delete(logFilePath);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
+        Assert.True(logFileExists);
+    }
 
-                var config = new BrokerConfiguration
-                {
-                    Port = 14223,
-                    LogFile = logFilePath,
-                    Debug = true // Generate some log output
-                };
+    [Fact]
+    public async Task LogTimeUtcCanBeToggledViaHotReload()
+    {
+        using var server = new NatsController();
 
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 14224,
+            LogTimeUtc = true
+        }, TestContext.Current.CancellationToken);
 
-                // Wait a bit for log file to be created
-                await Task.Delay(1000);
+        var result = await server.ApplyChangesAsync(c => c.LogTimeUtc = false, TestContext.Current.CancellationToken);
 
-                var logFileExists = File.Exists(logFilePath);
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
 
-                await server.ShutdownAsync();
+        Assert.True(result.Success);
+        Assert.False(info.CurrentConfig.LogTimeUtc);
+    }
 
-                // Clean up log file
-                try
-                {
-                    if (File.Exists(logFilePath))
-                    {
-                        File.Delete(logFilePath);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+    [Fact]
+    public async Task ReOpenLogFileSucceedsWhenLogFileIsConfigured()
+    {
+        using var server = new NatsController();
 
-                return logFileExists;
-            });
+        var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
 
-        await results.AssertAsync(
-            "LogTimeUtc can be toggled via hot reload",
-            async () =>
+        var config = new BrokerConfiguration
+        {
+            Port = 4225,
+            LogFile = logFilePath,
+            Debug = true
+        };
+
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
+
+        // Wait for log file to be created
+        await Task.Delay(1000, TestContext.Current.CancellationToken);
+
+        bool success = false;
+        try
+        {
+            // Call ReOpenLogFile - this should succeed even if no rotation happened
+            // In production, external tools (logrotate, etc.) would handle the actual rotation
+            await server.ReOpenLogFileAsync(TestContext.Current.CancellationToken);
+
+            success = true;
+        }
+        catch (Exception)
+        {
+            success = false;
+        }
+        finally
+        {
+            await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+            // Clean up
+            try
             {
-                using var server = new NatsController();
-
-                await server.ConfigureAsync(new BrokerConfiguration
+                if (File.Exists(logFilePath))
                 {
-                    Port = 14224,
-                    LogTimeUtc = true
-                });
-
-                var result = await server.ApplyChangesAsync(c => c.LogTimeUtc = false);
-
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
-
-                return result.Success && info.CurrentConfig.LogTimeUtc == false;
-            });
-
-        await results.AssertAsync(
-            "ReOpenLogFile succeeds when log file is configured",
-            async () =>
+                    File.Delete(logFilePath);
+                }
+            }
+            catch
             {
-                using var server = new NatsController();
+                // Ignore cleanup errors
+            }
+        }
 
-                var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-test-{Guid.NewGuid()}.log");
+        Assert.True(success);
+    }
 
-                var config = new BrokerConfiguration
-                {
-                    Port = 4225,
-                    LogFile = logFilePath,
-                    Debug = true
-                };
+    [Fact]
+    public async Task ReOpenLogFileSucceedsWhenNoLogFileIsConfigured()
+    {
+        using var server = new NatsController();
 
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 4226
+            // No LogFile configured
+        }, TestContext.Current.CancellationToken);
 
-                // Wait for log file to be created
-                await Task.Delay(1000);
+        // This should not throw even though no log file is configured
+        try
+        {
+            await server.ReOpenLogFileAsync(TestContext.Current.CancellationToken);
+            await server.ShutdownAsync(TestContext.Current.CancellationToken);
+            Assert.True(true);
+        }
+        catch
+        {
+            await server.ShutdownAsync(TestContext.Current.CancellationToken);
+            Assert.Fail("ReOpenLogFileAsync should not throw when no log file is configured");
+        }
+    }
 
-                bool success = false;
-                try
-                {
-                    // Call ReOpenLogFile - this should succeed even if no rotation happened
-                    // In production, external tools (logrotate, etc.) would handle the actual rotation
-                    await server.ReOpenLogFileAsync();
+    [Fact]
+    public async Task GetOptsReturnsValidJson()
+    {
+        using var server = new NatsController();
 
-                    success = true;
-                }
-                catch (Exception)
-                {
-                    success = false;
-                }
-                finally
-                {
-                    await server.ShutdownAsync();
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 4227,
+            Debug = true,
+            MaxPayload = 2048
+        }, TestContext.Current.CancellationToken);
 
-                    // Clean up
-                    try
-                    {
-                        if (File.Exists(logFilePath))
-                        {
-                            File.Delete(logFilePath);
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore cleanup errors
-                    }
-                }
+        var opts = await server.GetOptsAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
 
-                return success;
-            });
+        // Verify it's valid JSON
+        var jsonDoc = JsonDocument.Parse(opts);
+        Assert.NotNull(jsonDoc);
+    }
 
-        await results.AssertAsync(
-            "ReOpenLogFile succeeds when no log file is configured",
-            async () =>
+    [Fact]
+    public async Task GetOptsContainsExpectedConfigurationKeys()
+    {
+        using var server = new NatsController();
+
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 4228,
+            Debug = true,
+            MaxPayload = 2048,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-opts-test")
+        }, TestContext.Current.CancellationToken);
+
+        var opts = await server.GetOptsAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        var jsonDoc = JsonDocument.Parse(opts);
+        var root = jsonDoc.RootElement;
+
+        // Check for common configuration keys
+        var hasPort = root.TryGetProperty("port", out _);
+        var hasMaxPayload = root.TryGetProperty("max_payload", out _) ||
+                           root.TryGetProperty("maxPayload", out _);
+
+        // Clean up JetStream directory
+        try
+        {
+            var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-opts-test");
+            if (Directory.Exists(jsDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(jsDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 4226
-                    // No LogFile configured
-                });
+        Assert.True(hasPort || hasMaxPayload); // At least one key should be present
+    }
 
-                // This should not throw even though no log file is configured
-                try
-                {
-                    await server.ReOpenLogFileAsync();
-                    await server.ShutdownAsync();
-                    return true;
-                }
-                catch
-                {
-                    await server.ShutdownAsync();
-                    return false;
-                }
-            });
+    [Fact]
+    public async Task GetOptsReflectsCurrentConfigurationAfterHotReload()
+    {
+        using var server = new NatsController();
 
-        // Configuration Introspection Tests
-        await results.AssertAsync(
-            "GetOpts returns valid JSON",
-            async () =>
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 4229,
+            Debug = false
+        }, TestContext.Current.CancellationToken);
+
+        // Get opts before change
+        var optsBefore = await server.GetOptsAsync(TestContext.Current.CancellationToken);
+
+        // Apply change
+        await server.ApplyChangesAsync(c => c.Debug = true, TestContext.Current.CancellationToken);
+
+        // Get opts after change
+        var optsAfter = await server.GetOptsAsync(TestContext.Current.CancellationToken);
+
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // The JSON should be different
+        Assert.NotEqual(optsBefore, optsAfter);
+    }
+
+    [Fact]
+    public async Task JetStreamDomainCanBeConfigured()
+    {
+        using var server = new NatsController();
+
+        var config = new BrokerConfiguration
+        {
+            Port = 4230,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-domain-test"),
+            JetstreamDomain = "test-domain"
+        };
+
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
+
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // Clean up JetStream directory
+        try
+        {
+            if (Directory.Exists(config.JetstreamStoreDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(config.JetstreamStoreDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 4227,
-                    Debug = true,
-                    MaxPayload = 2048
-                });
+        Assert.Equal("test-domain", info.CurrentConfig.JetstreamDomain);
+    }
 
-                var opts = await server.GetOptsAsync();
-                await server.ShutdownAsync();
+    [Fact]
+    public async Task JetStreamUniqueTagCanBeConfigured()
+    {
+        using var server = new NatsController();
 
-                // Verify it's valid JSON
-                try
-                {
-                    var jsonDoc = JsonDocument.Parse(opts);
-                    return jsonDoc != null;
-                }
-                catch
-                {
-                    return false;
-                }
-            });
+        var uniqueTag = $"server-{Guid.NewGuid()}";
+        var config = new BrokerConfiguration
+        {
+            Port = 4231,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-tag-test"),
+            JetstreamUniqueTag = uniqueTag
+        };
 
-        await results.AssertAsync(
-            "GetOpts contains expected configuration keys",
-            async () =>
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
+
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // Clean up JetStream directory
+        try
+        {
+            if (Directory.Exists(config.JetstreamStoreDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(config.JetstreamStoreDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 4228,
-                    Debug = true,
-                    MaxPayload = 2048,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-opts-test")
-                });
+        Assert.Equal(uniqueTag, info.CurrentConfig.JetstreamUniqueTag);
+    }
 
-                var opts = await server.GetOptsAsync();
-                await server.ShutdownAsync();
+    [Fact]
+    public async Task JetStreamDomainAndTagCanBeConfiguredTogether()
+    {
+        using var server = new NatsController();
 
-                try
-                {
-                    var jsonDoc = JsonDocument.Parse(opts);
-                    var root = jsonDoc.RootElement;
+        var uniqueTag = $"server-{Guid.NewGuid()}";
+        var config = new BrokerConfiguration
+        {
+            Port = 4232,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-cluster-test"),
+            JetstreamDomain = "cluster-domain",
+            JetstreamUniqueTag = uniqueTag
+        };
 
-                    // Check for common configuration keys
-                    var hasPort = root.TryGetProperty("port", out _);
-                    var hasMaxPayload = root.TryGetProperty("max_payload", out _) ||
-                                       root.TryGetProperty("maxPayload", out _);
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
 
-                    // Clean up JetStream directory
-                    try
-                    {
-                        var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-opts-test");
-                        if (Directory.Exists(jsDir))
-                        {
-                            Directory.Delete(jsDir, recursive: true);
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore cleanup errors
-                    }
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
 
-                    return hasPort || hasMaxPayload; // At least one key should be present
-                }
-                catch
-                {
-                    return false;
-                }
-            });
-
-        await results.AssertAsync(
-            "GetOpts reflects current configuration after hot reload",
-            async () =>
+        // Clean up JetStream directory
+        try
+        {
+            if (Directory.Exists(config.JetstreamStoreDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(config.JetstreamStoreDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 4229,
-                    Debug = false
-                });
+        Assert.Equal("cluster-domain", info.CurrentConfig.JetstreamDomain);
+        Assert.Equal(uniqueTag, info.CurrentConfig.JetstreamUniqueTag);
+    }
 
-                // Get opts before change
-                var optsBefore = await server.GetOptsAsync();
+    [Fact]
+    public async Task JetStreamClusteringPropertiesAreSetAtStartup()
+    {
+        using var server = new NatsController();
 
-                // Apply change
-                await server.ApplyChangesAsync(c => c.Debug = true);
+        var newTag = $"server-{Guid.NewGuid()}";
+        await server.ConfigureAsync(new BrokerConfiguration
+        {
+            Port = 4233,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-reload-test"),
+            JetstreamDomain = "initial-domain",
+            JetstreamUniqueTag = newTag
+        }, TestContext.Current.CancellationToken);
 
-                // Get opts after change
-                var optsAfter = await server.GetOptsAsync();
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
 
-                await server.ShutdownAsync();
-
-                // The JSON should be different
-                return optsBefore != optsAfter;
-            });
-
-        // JetStream Clustering Tests
-        await results.AssertAsync(
-            "JetStream domain can be configured",
-            async () =>
+        // Clean up JetStream directory
+        try
+        {
+            var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-reload-test");
+            if (Directory.Exists(jsDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(jsDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                var config = new BrokerConfiguration
-                {
-                    Port = 4230,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-domain-test"),
-                    JetstreamDomain = "test-domain"
-                };
+        // Verify properties were set at startup
+        Assert.Equal("initial-domain", info.CurrentConfig.JetstreamDomain);
+        Assert.Equal(newTag, info.CurrentConfig.JetstreamUniqueTag);
+    }
 
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
+    [Fact]
+    public async Task LoggingAndClusteringFeaturesCanBeConfiguredTogether()
+    {
+        using var server = new NatsController();
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-combined-{Guid.NewGuid()}.log");
+        var uniqueTag = $"server-{Guid.NewGuid()}";
 
-                // Clean up JetStream directory
-                try
-                {
-                    if (Directory.Exists(config.JetstreamStoreDir))
-                    {
-                        Directory.Delete(config.JetstreamStoreDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+        var config = new BrokerConfiguration
+        {
+            Port = 4234,
+            LogFile = logFilePath,
+            LogTimeUtc = true,
+            LogFileSize = 512 * 1024,
+            Jetstream = true,
+            JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-combined-test"),
+            JetstreamDomain = "production",
+            JetstreamUniqueTag = uniqueTag
+        };
 
-                return info.CurrentConfig.JetstreamDomain == "test-domain";
-            });
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        Assert.True(result.Success);
 
-        await results.AssertAsync(
-            "JetStream unique tag can be configured",
-            async () =>
+        var info = await server.GetInfoAsync(TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
+
+        // Clean up
+        try
+        {
+            if (File.Exists(logFilePath))
             {
-                using var server = new NatsController();
-
-                var uniqueTag = $"server-{Guid.NewGuid()}";
-                var config = new BrokerConfiguration
-                {
-                    Port = 4231,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-tag-test"),
-                    JetstreamUniqueTag = uniqueTag
-                };
-
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
-
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
-
-                // Clean up JetStream directory
-                try
-                {
-                    if (Directory.Exists(config.JetstreamStoreDir))
-                    {
-                        Directory.Delete(config.JetstreamStoreDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-
-                return info.CurrentConfig.JetstreamUniqueTag == uniqueTag;
-            });
-
-        await results.AssertAsync(
-            "JetStream domain and tag can be configured together",
-            async () =>
+                File.Delete(logFilePath);
+            }
+            var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-combined-test");
+            if (Directory.Exists(jsDir))
             {
-                using var server = new NatsController();
+                Directory.Delete(jsDir, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-                var uniqueTag = $"server-{Guid.NewGuid()}";
-                var config = new BrokerConfiguration
-                {
-                    Port = 4232,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-cluster-test"),
-                    JetstreamDomain = "cluster-domain",
-                    JetstreamUniqueTag = uniqueTag
-                };
+        Assert.Equal(logFilePath, info.CurrentConfig.LogFile);
+        Assert.True(info.CurrentConfig.LogTimeUtc);
+        Assert.Equal(512 * 1024, info.CurrentConfig.LogFileSize);
+        Assert.Equal("production", info.CurrentConfig.JetstreamDomain);
+        Assert.Equal(uniqueTag, info.CurrentConfig.JetstreamUniqueTag);
+    }
 
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
+    [Fact]
+    public async Task LogFileSizeValidationAcceptsValidValues()
+    {
+        using var server = new NatsController();
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var config = new BrokerConfiguration
+        {
+            Port = 4235,
+            LogFileSize = 10 * 1024 * 1024 // 10MB - valid
+        };
 
-                // Clean up JetStream directory
-                try
-                {
-                    if (Directory.Exists(config.JetstreamStoreDir))
-                    {
-                        Directory.Delete(config.JetstreamStoreDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
+        await server.ShutdownAsync(TestContext.Current.CancellationToken);
 
-                return info.CurrentConfig.JetstreamDomain == "cluster-domain" &&
-                       info.CurrentConfig.JetstreamUniqueTag == uniqueTag;
-            });
+        Assert.True(result.Success);
+    }
 
-        await results.AssertAsync(
-            "JetStream clustering properties are set at startup",
-            async () =>
-            {
-                using var server = new NatsController();
+    [Fact]
+    public async Task NegativeLogFileSizeIsRejectedByValidation()
+    {
+        using var server = new NatsController();
 
-                var newTag = $"server-{Guid.NewGuid()}";
-                await server.ConfigureAsync(new BrokerConfiguration
-                {
-                    Port = 4233,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-reload-test"),
-                    JetstreamDomain = "initial-domain",
-                    JetstreamUniqueTag = newTag
-                });
+        var config = new BrokerConfiguration
+        {
+            Port = 4236,
+            LogFileSize = -1 // Invalid
+        };
 
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
+        var result = await server.ConfigureAsync(config, TestContext.Current.CancellationToken);
 
-                // Clean up JetStream directory
-                try
-                {
-                    var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-reload-test");
-                    if (Directory.Exists(jsDir))
-                    {
-                        Directory.Delete(jsDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+        // Server might not start, so only shutdown if it did
+        if (result.Success)
+        {
+            await server.ShutdownAsync(TestContext.Current.CancellationToken);
+        }
 
-                // Verify properties were set at startup
-                return info.CurrentConfig.JetstreamDomain == "initial-domain" &&
-                       info.CurrentConfig.JetstreamUniqueTag == newTag;
-            });
-
-        // Combined Features Test
-        await results.AssertAsync(
-            "Logging and clustering features can be configured together",
-            async () =>
-            {
-                using var server = new NatsController();
-
-                var logFilePath = Path.Combine(Path.GetTempPath(), $"nats-combined-{Guid.NewGuid()}.log");
-                var uniqueTag = $"server-{Guid.NewGuid()}";
-
-                var config = new BrokerConfiguration
-                {
-                    Port = 4234,
-                    LogFile = logFilePath,
-                    LogTimeUtc = true,
-                    LogFileSize = 512 * 1024,
-                    Jetstream = true,
-                    JetstreamStoreDir = Path.Combine(Path.GetTempPath(), "nats-js-combined-test"),
-                    JetstreamDomain = "production",
-                    JetstreamUniqueTag = uniqueTag
-                };
-
-                var result = await server.ConfigureAsync(config);
-                if (!result.Success)
-                {
-                    return false;
-                }
-
-                var info = await server.GetInfoAsync();
-                await server.ShutdownAsync();
-
-                // Clean up
-                try
-                {
-                    if (File.Exists(logFilePath))
-                    {
-                        File.Delete(logFilePath);
-                    }
-                    var jsDir = Path.Combine(Path.GetTempPath(), "nats-js-combined-test");
-                    if (Directory.Exists(jsDir))
-                    {
-                        Directory.Delete(jsDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-
-                return info.CurrentConfig.LogFile == logFilePath &&
-                       info.CurrentConfig.LogTimeUtc == true &&
-                       info.CurrentConfig.LogFileSize == 512 * 1024 &&
-                       info.CurrentConfig.JetstreamDomain == "production" &&
-                       info.CurrentConfig.JetstreamUniqueTag == uniqueTag;
-            });
-
-        // Validation Tests
-        await results.AssertAsync(
-            "Log file size validation accepts valid values",
-            async () =>
-            {
-                using var server = new NatsController();
-
-                var config = new BrokerConfiguration
-                {
-                    Port = 4235,
-                    LogFileSize = 10 * 1024 * 1024 // 10MB - valid
-                };
-
-                var result = await server.ConfigureAsync(config);
-                await server.ShutdownAsync();
-
-                return result.Success;
-            });
-
-        await results.AssertAsync(
-            "Negative log file size is rejected by validation",
-            async () =>
-            {
-                using var server = new NatsController();
-
-                var config = new BrokerConfiguration
-                {
-                    Port = 4236,
-                    LogFileSize = -1 // Invalid
-                };
-
-                var result = await server.ConfigureAsync(config);
-
-                // Server might not start, so only shutdown if it did
-                if (result.Success)
-                {
-                    await server.ShutdownAsync();
-                }
-
-                return !result.Success;
-            });
+        Assert.False(result.Success);
     }
 }
