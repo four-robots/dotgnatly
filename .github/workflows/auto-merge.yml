@@ -1,5 +1,12 @@
 name: Auto-merge Dependabot PRs
 
+# Note: GitHub Actions cannot approve PRs using GITHUB_TOKEN (security limitation).
+# To enable auto-approval, you can:
+# 1. Create a Personal Access Token (PAT) with repo permissions
+# 2. Add it as a secret (e.g., PR_APPROVAL_TOKEN)
+# 3. Use it in the approval step instead of GITHUB_TOKEN
+# For now, this workflow will only enable auto-merge (requires branch protection rules with required reviews)
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -23,9 +30,10 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Auto-approve patch and minor updates
+      - name: Comment on patch and minor updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr review --approve "$PR_URL"
+        run: |
+          gh pr comment "$PR_URL" --body "✅ This is a **${{ steps.metadata.outputs.update-type }}** update. Auto-merge has been enabled after CI passes."
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
