@@ -4,7 +4,7 @@
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageVersion Include="NATS.Net" Version="2.6.11" />
+		<PackageVersion Include="NATS.Net" Version="2.6.12" />
 	</ItemGroup>
 	<ItemGroup>
 		<!-- Testing packages -->
