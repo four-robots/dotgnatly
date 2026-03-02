@@ -137,13 +137,13 @@ jobs:
           10.0.x
 
     - name: Download Linux bindings
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: linux-bindings
         path: src/DotGnatly.Natives/
 
     - name: Download Windows bindings
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: windows-bindings
         path: src/DotGnatly.Natives/
