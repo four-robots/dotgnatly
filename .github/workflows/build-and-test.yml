@@ -141,7 +141,7 @@ jobs:
           --results-directory ./coverage
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       if: always()
       with:
         directory: ./coverage
