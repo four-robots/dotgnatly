@@ -35,18 +35,19 @@
       },
       "NATS.Net": {
         "type": "Direct",
-        "requested": "[2.6.11, )",
-        "resolved": "2.6.11",
-        "contentHash": "KpTRNBigWGX9c5lWWU31yCg4c3CEVrBNiLKRWlF2hO97u8EopMh1rrAN+VMTSBPe8YtN/UPncVvPTX3Q1gyiqA==",
+        "requested": "[3.3.1, )",
+        "resolved": "3.3.1",
+        "contentHash": "49j71ZeeOzDyDGJz5aeZ5wcRtWoK89KOwr1dJ0aAqr/7xpJjkVD614LEYkfdLpqr7fKA6sL1U7itbSkQxw0F+w==",
         "dependencies": {
-          "NATS.Client.Core": "2.6.11",
-          "NATS.Client.Hosting": "2.6.11",
-          "NATS.Client.JetStream": "2.6.11",
-          "NATS.Client.KeyValueStore": "2.6.11",
-          "NATS.Client.ObjectStore": "2.6.11",
-          "NATS.Client.Serializers.Json": "2.6.11",
-          "NATS.Client.Services": "2.6.11",
-          "NATS.Client.Simplified": "2.6.11"
+          "NATS.Client.Core": "3.3.1",
+          "NATS.Client.Hosting": "3.3.1",
+          "NATS.Client.JetStream": "3.3.1",
+          "NATS.Client.KeyValueStore": "3.3.1",
+          "NATS.Client.ObjectStore": "3.3.1",
+          "NATS.Client.Serializers.Json": "3.3.1",
+          "NATS.Client.Services": "3.3.1",
+          "NATS.Client.Simplified": "3.3.1",
+          "NATS.Extensions.Microsoft.DependencyInjection": "3.3.1"
         }
       },
       "xunit.runner.visualstudio": {
@@ -141,8 +142,8 @@
       },
       "Microsoft.Extensions.Options": {
         "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "JOVOfqpnqlVLUzINQ2fox8evY2SKLYJ3BV8QDe/Jyp21u1T7r45x/R/5QdteURMR5r01GxeJSBBUOCOyaNXA3g==",
+        "resolved": "8.0.2",
+        "contentHash": "dWGKvhFybsaZpGmzkGCbNNwBD1rVlWzrZKANLW/CcbFJpCEceMCGzT7zZwHOGBCbwM0SzBuceMj5HN1LKV1QqA==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
           "Microsoft.Extensions.Primitives": "8.0.0"
@@ -197,72 +198,97 @@
         "resolved": "5.0.0",
         "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg=="
       },
+      "NATS.Client.Abstractions": {
+        "type": "Transitive",
+        "resolved": "3.3.1",
+        "contentHash": "uyMgyvDiLTWrJ78K0mU2U/f/2iLH0DciGRWoVizwJMc0dfJlPl20Cy1hPjmIigRZOqDj3/brRn7LU+joZ7KU5Q==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "6.0.0"
+        }
+      },
       "NATS.Client.Core": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "iVXewDiZkII/Nx9M8ahm4plVxbh/UZ4BNAOJJJNn648p+8VRuY0vo0MxfnA1Cha4IHHHMYAr8yGTYGFBoxAXbg==",
+        "resolved": "3.3.1",
+        "contentHash": "AgMWqf0YqmZsC/1F2g6nfYm/eNJ98G0xp1R0Qm5pbphzuuPSH6KosOxpBIqZcU4swB3qjt5Ef8L85mCFoJVcSA==",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "6.0.1",
-          "Microsoft.Extensions.Primitives": "6.0.0"
+          "Microsoft.Extensions.Primitives": "6.0.0",
+          "NATS.Client.Abstractions": "3.3.1",
+          "NATS.NKeys": "1.0.1"
         }
       },
       "NATS.Client.Hosting": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "YA7P66WmQnbwv07vFXiCUvPeCcnV6zj1mxnV1l/85b/ajKq4+8cB9BWUf4mHE7eZ59K8ONIMww9HRzNab/KuOg==",
+        "resolved": "3.3.1",
+        "contentHash": "bcR4Y/4iineTj3rejdX4wwA9zBlD2xlSC/4EMY53x8JubU0epQJo9U2cg8XLkQ9qsA2duSFZsoKKBkiIzxiIqQ==",
         "dependencies": {
           "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
-          "NATS.Client.Core": "2.6.11"
+          "NATS.Client.Core": "3.3.1"
         }
       },
       "NATS.Client.JetStream": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "tn/7xEVmTOh8PBau+nKOKelTAPeqUmfhwG9gddTUluGFHjut9auMthOmdhb0iYmiMYlBS2fv7frnV7NbDxPiww==",
+        "resolved": "3.3.1",
+        "contentHash": "rtygTQ+4Mglm843+Ijz/96aXAS6KL514E0QwusMxefaKGEkRvh6i5ONoXlGE5uI2p4EgYZGHZqQCfkvZUW/QVg==",
         "dependencies": {
-          "NATS.Client.Core": "2.6.11"
+          "NATS.Client.Core": "3.3.1"
         }
       },
       "NATS.Client.KeyValueStore": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "Jc5K1F2Q/1phHF4a6qsXnDHBEFcoEpCFdrNXs+IKnNIxMD/buH4k9fmq0Y8LjAG70okbNnDK3xgnHdQ8N62nHA==",
+        "resolved": "3.3.1",
+        "contentHash": "CMuHkfbeZ4hLm1XIqEfNcaB+2LC5E7BydbBKELBEz4+dAgtT0kAc2Seg6e0REokAAKfFZdSQYiQkjwamL+yAMg==",
         "dependencies": {
-          "NATS.Client.JetStream": "2.6.11"
+          "NATS.Client.JetStream": "3.3.1"
         }
       },
       "NATS.Client.ObjectStore": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "zYW5s29xmZoDgz6Is2GV5/jGl+K9FjQt/6/sFmiNmfn6WrliChzx65hfAnOYtmwNSDdF/xY6D/mf3BWh9ePMEA==",
+        "resolved": "3.3.1",
+        "contentHash": "zfNTXWKz3mb11kEfagAIeo/9U4f47K+umdvAQZUomeVY+KeKW549+XH/o1Kuz9XCIEFcTNdEetgz+XlPkjdDBg==",
         "dependencies": {
-          "NATS.Client.JetStream": "2.6.11"
+          "NATS.Client.JetStream": "3.3.1"
         }
       },
       "NATS.Client.Serializers.Json": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "tI+FKOBDN81FapwqwKW+0TK/wxQA4IMlFxL2Br3hhqUUQAZ0VFVs9+rhePVnpMe5tKFiebvY6qChCco8/Uu6cw==",
+        "resolved": "3.3.1",
+        "contentHash": "CJeXvjjYIzXWRW7+1qweGpC+4waFNXS/+VXdXNEDobn2H5DrVr3aclGY/c1l8Tu/Kl4gIEnDUxFVOshy/rbu1A==",
         "dependencies": {
-          "NATS.Client.Core": "2.6.11"
+          "NATS.Client.Abstractions": "3.3.1"
         }
       },
       "NATS.Client.Services": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "1ITVOq2efFU+e/1WM8rL440xJSSZNAtTv6QgCOUaQ3UOqEmtDVCeX2FEmWq/9MJvMilgAb1m6r/4wESFilP/nw==",
+        "resolved": "3.3.1",
+        "contentHash": "VpVEYplHpeuAhfcu1ZYCAEfe8RxmhJfrEH0bgFLi4hQM+0ZC4yoxPP2n8PrKppFTNcgDs3taHn51FiYXODGsCw==",
         "dependencies": {
-          "NATS.Client.Core": "2.6.11"
+          "NATS.Client.Core": "3.3.1"
         }
       },
       "NATS.Client.Simplified": {
         "type": "Transitive",
-        "resolved": "2.6.11",
-        "contentHash": "PKLBtH6Z1P7wLbUFzZnyEeknw1j23jtLZe7Dor1ZfmTMjkT6KGHZqRnBkOlsKbUYBwbqb9w90rZSQ1++zkjFdA==",
+        "resolved": "3.3.1",
+        "contentHash": "NzWTUJffFMWLrMOYSny6Hw8lKT6GdLAvQBdE6uNU98gGKTNmN0pY7nywmUxP4WXgWutHrAuimQiCjKg5mVkJpA==",
         "dependencies": {
-          "NATS.Client.Core": "2.6.11",
-          "NATS.Client.Serializers.Json": "2.6.11"
+          "NATS.Client.Core": "3.3.1",
+          "NATS.Client.Serializers.Json": "3.3.1"
         }
+      },
+      "NATS.Extensions.Microsoft.DependencyInjection": {
+        "type": "Transitive",
+        "resolved": "3.3.1",
+        "contentHash": "QLdlOQBvAjR62CUoFArPaHAhKShXhgpyKoL9RGbEljEFMCdcLV9AeZh0jR+ENoiqSsParw32IiIN36oepaLG3A==",
+        "dependencies": {
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.2",
+          "NATS.Client.Simplified": "3.3.1"
+        }
+      },
+      "NATS.NKeys": {
+        "type": "Transitive",
+        "resolved": "1.0.1",
+        "contentHash": "xtURX0fexmMd10noG3Uc8gFgwaH7QLQxxgdaVoQKFo0+8a4blwe8vPGgY2S5pzeVYcRXyjlIoA4AR4JgtThyjQ=="
       },
       "Newtonsoft.Json": {
         "type": "Transitive",
